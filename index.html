@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>GMAO Parc & Atelier</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=IBM+Plex+Mono:wght@300;400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
 
@@ -608,7 +609,7 @@
         <div class="topbar-path" id="pagePath">gmao / dashboard</div>
       </div>
       <div class="topbar-actions">
-        <button class="btn btn-ghost btn-sm" onclick="exportCSV()">⬇ CSV</button>
+        <button class="btn btn-ghost btn-sm" onclick="exportXLSX()">⬇ XLSX</button>
         <button class="btn btn-ghost btn-sm" onclick="exportPDF()">⬇ PDF</button>
         <button class="notif-btn" onclick="toggleNotif()" id="notifBtn">
           🔔
@@ -1392,12 +1393,12 @@
               <label>Format d'Export</label>
               <select id="exportFormat">
                 <option>PDF — Fiche propre</option>
-                <option>Excel / CSV — Données brutes</option>
+                <option>Excel XLSX — Données brutes</option>
               </select>
             </div>
             <div class="form-group full" style="display:flex;gap:10px;align-items:flex-end">
               <button class="btn btn-primary" onclick="generateRapport()">⬡ Générer Rapport</button>
-              <button class="btn btn-blue" onclick="exportCSV()">⬇ Exporter CSV</button>
+              <button class="btn btn-blue" onclick="exportXLSX()">⬇ Exporter XLSX</button>
               <button class="btn btn-ghost" onclick="exportPDF()">⬇ Exporter PDF</button>
             </div>
           </div>
@@ -1842,16 +1843,77 @@ function generateRapport() {
   }, 800);
 }
 
-// ═══ EXPORTS ═══
-function exportCSV() {
-  const headers = ['N° Engin','Type','Chantier','Heures','Statut'];
-  const rows = engins.map(e => [e.id, e.name, e.chantier, e.heures, e.statut]);
-  let csv = headers.join(',') + '\n' + rows.map(r => r.join(',')).join('\n');
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-  a.download = 'rapport_parc_' + new Date().toISOString().slice(0,10) + '.csv';
-  a.click();
-  showToast('✓ Export CSV téléchargé');
+// ═══ EXPORTS XLSX ═══
+function exportXLSX() {
+  const wb = XLSX.utils.book_new();
+  const date = new Date().toISOString().slice(0,10);
+
+  // ── Feuille 1 : Parc Engins ──
+  const enginRows = [
+    ['N° Engin', 'Modèle', 'Type', 'Chantier', 'Heures', 'Statut']
+  ].concat(engins.map(e => [
+    e.id, e.name, e.type, e.chantier, e.heures,
+    e.statut === 'dispo' ? 'Disponible' : e.statut === 'panne' ? 'En panne' : 'Maintenance'
+  ]));
+  const wsEngins = XLSX.utils.aoa_to_sheet(enginRows);
+  wsEngins['!cols'] = [14,22,18,14,12,14].map(w => ({ wch: w }));
+  XLSX.utils.book_append_sheet(wb, wsEngins, 'Parc Engins');
+
+  // ── Feuille 2 : Interventions ──
+  const interventionData = [
+    ['N° OT', 'Engin', 'Panne', 'Section', 'Technicien', 'Date', 'Priorité', 'Statut'],
+    ['INT-047','ENG-012 Pelle 320D','Circuit hydraulique','Mécanique','Youssef','14/01/2025','Urgent','En cours'],
+    ['INT-048','ENG-007 Bulldozer D6T','Culasse fissurée','Mécanique','Hassan','13/01/2025','Urgent','Bloquée'],
+    ['INT-045','ENG-003 Pelle 320D','Soudage bras','Soudage','Karim','12/01/2025','Normal','En cours'],
+    ['INT-044','ENG-019 Compacteur','Révision générale','Mécanique','Amine','12/01/2025','Normal','En cours'],
+    ['INT-043','ENG-011 Chargeuse','Remplacement pneus','Pneumatique','Omar','11/01/2025','Faible','Terminée'],
+  ];
+  const wsOT = XLSX.utils.aoa_to_sheet(interventionData);
+  wsOT['!cols'] = [10,22,22,14,12,12,10,12].map(w => ({ wch: w }));
+  XLSX.utils.book_append_sheet(wb, wsOT, 'Interventions');
+
+  // ── Feuille 3 : Stock Pièces ──
+  const stockData = [
+    ['Référence', 'Désignation', 'Catégorie', 'Qté', 'Seuil Min.', 'Unité', 'Prix Unit. (MAD)', 'Fournisseur', 'Statut'],
+    ['FH-001','Filtre à huile moteur','Filtration',0,5,'Pcs',85,'Autoparts Casablanca','Rupture'],
+    ['JC-003','Joint de culasse D6T','Joints',2,5,'Pcs',320,'CAT Maroc','Critique'],
+    ['HU-005','Huile moteur 15W40','Lubrifiants',48,20,'Litres',28,'Afriquia Lubricants','OK'],
+    ['PC-012','Plaquettes de frein','Freinage',12,8,'Jeux',240,'Frein-Auto Maroc','OK'],
+    ['FC-007','Filtre carburant','Filtration',6,8,'Pcs',95,'Autoparts Casablanca','Bas'],
+    ['RL-002','Roulement à billes 6205','Roulements',24,10,'Pcs',65,'SKF Maroc','OK'],
+    ['TS-009','Tuyau souple hydraulique','Hydraulique',8,5,'Mètres',185,'Parker Maroc','OK'],
+  ];
+  const wsStock = XLSX.utils.aoa_to_sheet(stockData);
+  wsStock['!cols'] = [10,28,14,6,10,8,18,22,10].map(w => ({ wch: w }));
+  XLSX.utils.book_append_sheet(wb, wsStock, 'Stock Pièces');
+
+  // ── Feuille 4 : Carburant ──
+  const carburantData = [
+    ['Date', 'N° Engin', 'Chauffeur', 'Litres', 'KM / Heures', 'Chantier', 'Validé'],
+    ['14/01/2025','ENG-007','Ahmed',120,'4 820 h','CH-N3','Oui'],
+    ['14/01/2025','ENG-015','Mustapha',85,'3 210 h','CH-N3','Oui'],
+    ['13/01/2025','ENG-011','Khalid',95,'2 870 h','Base','En attente'],
+    ['13/01/2025','ENG-003','Said',110,'5 120 h','CH-S2','Oui'],
+  ];
+  const wsCarb = XLSX.utils.aoa_to_sheet(carburantData);
+  wsCarb['!cols'] = [14,12,14,8,12,10,12].map(w => ({ wch: w }));
+  XLSX.utils.book_append_sheet(wb, wsCarb, 'Carburant');
+
+  // ── Feuille 5 : Chantiers ──
+  const chantierData = [
+    ['Référence', 'Désignation', 'Lieu', 'Engins Affectés', 'Responsable', 'Statut'],
+    ['CH-N3','Terrassement Route Nationale','Benslimane','ENG-007, ENG-011, ENG-015','M. Benali','Actif'],
+    ['CH-A1','Fondations Zone Industrielle','Berrechid','ENG-012, ENG-017','M. Khalid','Actif'],
+    ['CH-S2','Aménagement Parking Commercial','Settat','ENG-003, ENG-009','M. Rachid','Pause'],
+    ['CH-K1','Voirie Résidentielle','Khouribga','ENG-021, ENG-024','M. Said','Actif'],
+  ];
+  const wsChant = XLSX.utils.aoa_to_sheet(chantierData);
+  wsChant['!cols'] = [10,32,14,26,14,10].map(w => ({ wch: w }));
+  XLSX.utils.book_append_sheet(wb, wsChant, 'Chantiers');
+
+  // ── Téléchargement ──
+  XLSX.writeFile(wb, 'GMAO_Rapport_' + date + '.xlsx');
+  showToast('✓ Export XLSX téléchargé — 5 feuilles');
 }
 
 function exportPDF() {
