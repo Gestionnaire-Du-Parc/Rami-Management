@@ -50,6 +50,178 @@
     pointer-events: none; z-index: 0;
   }
 
+  /* ── LOGIN SCREEN ── */
+  #loginScreen {
+    position: fixed; inset: 0;
+    background: var(--bg);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 9000;
+    flex-direction: column; gap: 0;
+  }
+  #loginScreen::before {
+    content: '';
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(245,158,11,.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(245,158,11,.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+  }
+  .login-box {
+    position: relative; z-index: 1;
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    width: 380px;
+    box-shadow: 0 32px 80px rgba(0,0,0,.6);
+    overflow: hidden;
+  }
+  .login-header {
+    background: var(--surface2);
+    padding: 24px 28px 20px;
+    border-bottom: 1px solid var(--border);
+    text-align: center;
+  }
+  .login-logo {
+    font-family: var(--font-display);
+    font-size: 28px; font-weight: 700;
+    color: var(--accent);
+    letter-spacing: .04em;
+  }
+  .login-sub {
+    font-family: var(--font-mono);
+    font-size: 9px; color: var(--text3);
+    letter-spacing: .12em; text-transform: uppercase;
+    margin-top: 4px;
+  }
+  .login-body { padding: 24px 28px; display: flex; flex-direction: column; gap: 16px; }
+  .login-field { display: flex; flex-direction: column; gap: 5px; }
+  .login-field label {
+    font-family: var(--font-mono);
+    font-size: 9px; color: var(--text3);
+    text-transform: uppercase; letter-spacing: .1em;
+  }
+  .login-input {
+    background: var(--surface3);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    padding: 10px 12px;
+    border-radius: 3px;
+    outline: none;
+    transition: border-color .15s;
+    width: 100%;
+    letter-spacing: .08em;
+  }
+  .login-input:focus { border-color: var(--accent); }
+  .login-error {
+    background: rgba(239,68,68,.1);
+    border: 1px solid rgba(239,68,68,.3);
+    color: var(--danger);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    padding: 8px 12px;
+    border-radius: 3px;
+    display: none;
+  }
+  .login-error.show { display: block; }
+  .login-btn {
+    background: var(--accent); color: #000;
+    border: none; border-radius: 3px;
+    font-family: var(--font-display);
+    font-size: 15px; font-weight: 700;
+    padding: 11px;
+    cursor: pointer;
+    letter-spacing: .06em;
+    transition: background .15s;
+    width: 100%;
+  }
+  .login-btn:hover { background: #fbbf24; }
+  .login-footer {
+    padding: 12px 28px;
+    border-top: 1px solid var(--border);
+    text-align: center;
+    font-family: var(--font-mono);
+    font-size: 9px; color: var(--text3);
+    letter-spacing: .08em;
+  }
+  .login-role-hint {
+    display: flex; gap: 6px; flex-wrap: wrap; justify-content: center;
+    margin-top: 12px;
+  }
+  .hint-chip {
+    padding: 3px 8px;
+    background: var(--surface3);
+    border: 1px solid var(--border2);
+    border-radius: 2px;
+    font-family: var(--font-mono);
+    font-size: 9px; color: var(--text3);
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .hint-chip:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── ACCESS DENIED ── */
+  .access-denied {
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    height: 100%; gap: 12px; color: var(--text3);
+    padding: 40px;
+  }
+  .access-denied .icon { font-size: 48px; }
+  .access-denied h3 { font-family: var(--font-display); font-size: 20px; color: var(--danger); }
+  .access-denied p { font-family: var(--font-mono); font-size: 11px; text-align: center; }
+
+  /* ── ADMIN PANEL STYLES ── */
+  .code-display {
+    font-family: var(--font-mono);
+    font-size: 18px; font-weight: 700;
+    color: var(--accent);
+    background: var(--surface3);
+    border: 1px solid var(--border2);
+    padding: 10px 14px;
+    border-radius: 3px;
+    letter-spacing: .15em;
+    display: inline-block;
+  }
+  .user-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .user-row:last-child { border-bottom: none; }
+  .user-row:hover { background: var(--surface2); }
+  .user-row-avatar {
+    width: 36px; height: 36px; min-width: 36px;
+    border-radius: 3px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-display);
+    font-size: 14px; font-weight: 700;
+  }
+  .avatar-master { background: linear-gradient(135deg,#f59e0b,#ef4444); color:#000; }
+  .avatar-atelier { background: linear-gradient(135deg,#3b82f6,#1d4ed8); color:#fff; }
+  .avatar-parc { background: linear-gradient(135deg,#10b981,#065f46); color:#fff; }
+  .avatar-coord { background: linear-gradient(135deg,#8b5cf6,#4c1d95); color:#fff; }
+  .user-info { flex: 1; }
+  .user-info-name { font-size: 13px; font-weight: 600; color: var(--text); }
+  .user-info-role { font-family: var(--font-mono); font-size: 9px; color: var(--text3); margin-top: 2px; }
+  .code-badge {
+    font-family: var(--font-mono);
+    font-size: 13px; font-weight: 700;
+    color: var(--accent);
+    background: rgba(245,158,11,.1);
+    border: 1px solid rgba(245,158,11,.3);
+    padding: 4px 10px;
+    border-radius: 3px;
+    letter-spacing: .12em;
+    min-width: 80px;
+    text-align: center;
+  }
+  .code-hidden { filter: blur(4px); transition: filter .2s; cursor: pointer; }
+  .code-hidden:hover { filter: blur(0); }
+
   /* ── SHELL ── */
   .shell { display: flex; height: 100vh; position: relative; z-index: 1; }
 
@@ -522,6 +694,32 @@
 </head>
 <body>
 
+<!-- ═══ LOGIN SCREEN ═══ -->
+<div id="loginScreen">
+  <div class="login-box">
+    <div class="login-header">
+      <div class="login-logo">⬡ GMAO</div>
+      <div style="font-family:var(--font-display);font-size:16px;font-weight:700;color:var(--text);margin-top:4px">Parc &amp; Atelier</div>
+      <div class="login-sub">Accès sécurisé — Entrez votre code session</div>
+    </div>
+    <div class="login-body">
+      <div class="login-field">
+        <label>Code d'accès</label>
+        <input class="login-input" id="loginCode" type="password" placeholder="• • • • • •" maxlength="10"
+          onkeydown="if(event.key==='Enter')doLogin()">
+      </div>
+      <div class="login-error" id="loginError">⚠ Code incorrect — Accès refusé</div>
+      <button class="login-btn" onclick="doLogin()">CONNEXION</button>
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--text3);text-align:center;margin-top:-6px">
+        Contactez le Master Admin pour obtenir votre code
+      </div>
+    </div>
+    <div class="login-footer">
+      GMAO v2.0 — Precision Logistics &nbsp;|&nbsp; Soualem, Maroc
+    </div>
+  </div>
+</div>
+
 <div class="shell">
 
   <!-- ═══ SIDEBAR ═══ -->
@@ -580,22 +778,23 @@
       <div class="nav-item" onclick="showPage('rapports')">
         <span class="nav-icon">📊</span> Rapports
       </div>
+      <div class="nav-item admin-only" id="navAdminUsers" onclick="showPage('adminUsers')" style="display:none">
+        <span class="nav-icon">🔐</span> Utilisateurs
+        <span class="nav-badge ok">Admin</span>
+      </div>
     </div>
 
     <div class="sidebar-footer">
       <div class="user-card">
-        <div class="user-avatar" id="avatarInitial">A</div>
+        <div class="user-avatar" id="avatarInitial">?</div>
         <div>
-          <div class="user-name" id="userNameDisplay">Amine</div>
-          <div class="user-role" id="userRoleDisplay">Coordinateur</div>
+          <div class="user-name" id="userNameDisplay">—</div>
+          <div class="user-role" id="userRoleDisplay">—</div>
         </div>
       </div>
-      <select class="role-select" onchange="changeRole(this.value)">
-        <option value="coordinateur">Coordinateur (Amine)</option>
-        <option value="master">Master Admin</option>
-        <option value="chef_atelier">Chef d'Atelier</option>
-        <option value="chef_parc">Chef de Parc</option>
-      </select>
+      <button class="btn btn-ghost" style="width:100%;margin-top:8px;font-size:11px" onclick="doLogout()">
+        ⎋ Déconnexion
+      </button>
     </div>
   </nav>
 
@@ -1428,6 +1627,42 @@
         </div>
       </div>
 
+      <!-- ════ PAGE: ADMIN UTILISATEURS ════ -->
+      <div class="page" id="page-adminUsers">
+        <div class="stats-row">
+          <div class="stat-card accent"><div class="stat-label">Utilisateurs Actifs</div><div class="stat-value">4</div></div>
+          <div class="stat-card blue"><div class="stat-label">Sessions Ouvertes</div><div class="stat-value" id="openSessions">0</div></div>
+          <div class="stat-card green"><div class="stat-label">Dernière Connexion</div><div class="stat-value" style="font-size:14px;padding-top:6px" id="lastLoginDisplay">—</div></div>
+          <div class="stat-card red"><div class="stat-label">Niveau Sécurité</div><div class="stat-value" style="font-size:18px;padding-top:4px">Admin</div></div>
+        </div>
+
+        <div class="alert alert-warn">🔐 Zone réservée au Master Admin — Toute modification de code est enregistrée</div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">👥 Gestion des Sessions & Codes d'Accès</div>
+            <button class="btn btn-primary btn-sm" onclick="regenerateAllCodes()">↺ Régénérer Tous</button>
+          </div>
+          <div id="usersList">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">📋 Journal des Connexions</div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Date / Heure</th><th>Utilisateur</th><th>Rôle</th><th>Action</th><th>Résultat</th></tr></thead>
+              <tbody id="loginLog">
+                <!-- Populated by JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
     </div><!-- /content -->
   </div><!-- /main -->
 </div><!-- /shell -->
@@ -1708,6 +1943,238 @@
 </div>
 
 <script>
+// ═══════════════════════════════════════════════
+// SESSION & ACCESS CONTROL SYSTEM
+// ═══════════════════════════════════════════════
+
+// Codes stockés en localStorage (persistants)
+const DEFAULT_USERS = [
+  { id:'master',       name:'Rami Mohamed Amine', role:'Master Admin',  init:'MA', avatarClass:'avatar-master',  code:'ADMIN2025', pages:['dashboard','engins','chantiers','receptionsPage','interventions','stock','carburant','coordination','rapports','adminUsers'] },
+  { id:'chef_atelier', name:'Chef Atelier',        role:"Chef d'Atelier", init:'CA', avatarClass:'avatar-atelier', code:'ATELIER1',  pages:['interventions','stock','carburant'] },
+  { id:'chef_parc',    name:'Chef de Parc',         role:'Chef de Parc',  init:'CP', avatarClass:'avatar-parc',    code:'PARC2025',  pages:['dashboard','engins','chantiers','receptionsPage'] },
+  { id:'coordinateur', name:'Amine',                role:'Coordinateur',  init:'A',  avatarClass:'avatar-coord',   code:'COORD01',   pages:['dashboard','engins','chantiers','receptionsPage','interventions','stock','carburant','coordination','rapports'] },
+];
+
+function getUsers() {
+  const stored = localStorage.getItem('gmao_users');
+  return stored ? JSON.parse(stored) : DEFAULT_USERS;
+}
+function saveUsers(users) {
+  localStorage.setItem('gmao_users', JSON.stringify(users));
+}
+function getLog() {
+  return JSON.parse(localStorage.getItem('gmao_log') || '[]');
+}
+function addLog(entry) {
+  const log = getLog();
+  log.unshift({ ...entry, time: new Date().toLocaleString('fr-FR') });
+  if (log.length > 50) log.pop();
+  localStorage.setItem('gmao_log', JSON.stringify(log));
+}
+
+let currentUser = null;
+let editingUserId = null;
+
+// ── LOGIN ──
+function doLogin() {
+  const code = document.getElementById('loginCode').value.trim().toUpperCase();
+  const users = getUsers();
+  const user = users.find(u => u.code.toUpperCase() === code);
+  if (!user) {
+    document.getElementById('loginError').classList.add('show');
+    document.getElementById('loginCode').value = '';
+    addLog({ user:'Inconnu', role:'—', action:'Tentative connexion', result:'Échec' });
+    setTimeout(() => document.getElementById('loginError').classList.remove('show'), 3000);
+    return;
+  }
+  currentUser = user;
+  addLog({ user: user.name, role: user.role, action: 'Connexion', result: 'Succès' });
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('avatarInitial').textContent = user.init;
+  document.getElementById('userNameDisplay').textContent = user.name;
+  document.getElementById('userRoleDisplay').textContent = user.role;
+  applyAccessControl(user);
+  // Go to first allowed page
+  showPage(user.pages[0]);
+  showToast('✓ Bienvenue, ' + user.name + ' — ' + user.role);
+}
+
+function doLogout() {
+  if (!currentUser) return;
+  addLog({ user: currentUser.name, role: currentUser.role, action: 'Déconnexion', result: '—' });
+  currentUser = null;
+  document.getElementById('loginCode').value = '';
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('avatarInitial').textContent = '?';
+  document.getElementById('userNameDisplay').textContent = '—';
+  document.getElementById('userRoleDisplay').textContent = '—';
+}
+
+// ── ACCESS CONTROL ──
+function applyAccessControl(user) {
+  const allPages = ['dashboard','engins','chantiers','receptionsPage','interventions','stock','carburant','coordination','rapports','adminUsers'];
+  // Show/hide nav items
+  document.querySelectorAll('.nav-item').forEach(n => {
+    const onclick = n.getAttribute('onclick') || '';
+    const match = onclick.match(/showPage\('([^']+)'\)/);
+    if (match) {
+      const pageId = match[1];
+      n.style.display = user.pages.includes(pageId) ? '' : 'none';
+    }
+  });
+  // Show admin nav
+  document.getElementById('navAdminUsers').style.display =
+    user.id === 'master' ? '' : 'none';
+  // Show/hide export buttons for non-admin
+  const topActions = document.querySelector('.topbar-actions');
+  if (topActions) {
+    topActions.style.display = (user.id === 'master' || user.id === 'coordinateur') ? 'flex' : 'none';
+  }
+}
+
+// ── SHOW PAGE WITH GUARD ──
+function showPage(id) {
+  if (currentUser && !currentUser.pages.includes(id)) {
+    // Show access denied
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    const denied = document.getElementById('page-' + id);
+    if (denied) {
+      denied.classList.add('active');
+      denied.innerHTML = `<div class="access-denied">
+        <div class="icon">🔒</div>
+        <h3>Accès Refusé</h3>
+        <p>Vous n'avez pas les droits pour accéder à cette section.<br>Contactez le Master Admin.</p>
+      </div>`;
+    }
+    return;
+  }
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const page = document.getElementById('page-' + id);
+  if (page) page.classList.add('active');
+  const info = pageTitles[id] || [id, ''];
+  document.getElementById('pageTitle').textContent = info[0];
+  document.getElementById('pagePath').textContent = info[1];
+  document.querySelectorAll('.nav-item').forEach(n => {
+    if (n.getAttribute('onclick')?.includes(id)) n.classList.add('active');
+  });
+  if (id === 'engins') renderEngins('');
+  if (id === 'adminUsers') renderAdminUsers();
+  notifPanel.classList.remove('open');
+}
+
+// ═══ ADMIN USER MANAGEMENT ═══
+function renderAdminUsers() {
+  if (!currentUser || currentUser.id !== 'master') return;
+  const users = getUsers();
+  // Stats
+  document.getElementById('openSessions').textContent = currentUser ? 1 : 0;
+  const log = getLog();
+  const lastOk = log.find(l => l.result === 'Succès');
+  document.getElementById('lastLoginDisplay').textContent = lastOk ? lastOk.time.split(' ')[0] : '—';
+
+  // Users list
+  const list = document.getElementById('usersList');
+  list.innerHTML = users.map(u => `
+    <div class="user-row">
+      <div class="user-row-avatar ${u.avatarClass}">${u.init}</div>
+      <div class="user-info">
+        <div class="user-info-name">${u.name}</div>
+        <div class="user-info-role">${u.role} &nbsp;·&nbsp; Pages: ${u.pages.length}</div>
+      </div>
+      <div class="code-badge code-hidden" title="Cliquer pour voir" onclick="this.classList.toggle('code-hidden')">${u.code}</div>
+      <button class="btn btn-ghost btn-sm" onclick="openEditCode('${u.id}')">✎ Modifier</button>
+      <button class="btn btn-ghost btn-sm" onclick="quickRegen('${u.id}')">↺ Régénérer</button>
+    </div>
+  `).join('');
+
+  // Log
+  const tbody = document.getElementById('loginLog');
+  const logData = getLog();
+  if (logData.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:20px;font-family:var(--font-mono);font-size:11px">Aucune activité enregistrée</td></tr>';
+    return;
+  }
+  tbody.innerHTML = logData.map(l => `
+    <tr>
+      <td class="mono">${l.time}</td>
+      <td>${l.user}</td>
+      <td><span class="badge badge-gray">${l.role}</span></td>
+      <td>${l.action}</td>
+      <td><span class="badge ${l.result==='Succès'?'badge-ok':l.result==='Échec'?'badge-danger':'badge-gray'}">${l.result}</span></td>
+    </tr>
+  `).join('');
+}
+
+function openEditCode(userId) {
+  const users = getUsers();
+  const user = users.find(u => u.id === userId);
+  if (!user) return;
+  editingUserId = userId;
+  document.getElementById('editUserName').textContent = user.name;
+  document.getElementById('editUserRole').textContent = user.role;
+  document.getElementById('editUserAvatar').textContent = user.init;
+  document.getElementById('editUserAvatar').className = 'user-row-avatar ' + user.avatarClass;
+  document.getElementById('editCurrentCode').textContent = user.code;
+  document.getElementById('newCodeInput').value = '';
+  openModal('modalEditCode');
+}
+
+function generateRandom() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  document.getElementById('newCodeInput').value = code;
+}
+
+function saveNewCode() {
+  const newCode = document.getElementById('newCodeInput').value.trim().toUpperCase();
+  if (!newCode || newCode.length < 4) {
+    showToast('⚠ Code trop court — minimum 4 caractères');
+    return;
+  }
+  const users = getUsers();
+  const user = users.find(u => u.id === editingUserId);
+  if (!user) return;
+  const oldCode = user.code;
+  user.code = newCode;
+  saveUsers(users);
+  addLog({ user: currentUser.name, role: 'Master Admin', action: `Code modifié pour ${user.name} (${oldCode} → ${newCode})`, result: 'Admin' });
+  closeModal('modalEditCode');
+  renderAdminUsers();
+  showToast('✓ Code mis à jour pour ' + user.name + ' : ' + newCode);
+}
+
+function quickRegen(userId) {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  const users = getUsers();
+  const user = users.find(u => u.id === userId);
+  if (!user) return;
+  const old = user.code;
+  user.code = code;
+  saveUsers(users);
+  addLog({ user: currentUser.name, role: 'Master Admin', action: `Regen code ${user.name} (${old} → ${code})`, result: 'Admin' });
+  renderAdminUsers();
+  showToast('↺ Nouveau code ' + user.name + ' : ' + code);
+}
+
+function regenerateAllCodes() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const users = getUsers();
+  users.forEach(u => {
+    if (u.id === 'master') return; // Ne pas régénérer le master automatiquement
+    let code = '';
+    for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+    u.code = code;
+  });
+  saveUsers(users);
+  addLog({ user: currentUser.name, role: 'Master Admin', action: 'Régénération globale des codes', result: 'Admin' });
+  renderAdminUsers();
+  showToast('↺ Tous les codes ont été régénérés');
+}
+
 // ═══ DATA ═══
 const engins = [
   { id:'ENG-001', name:'Niveleuse G140B', type:'Niveleuse', heures:'5 120 h', chantier:'CH-S2', statut:'dispo' },
@@ -1735,22 +2202,8 @@ const pageTitles = {
   carburant: ['Carburant & Lubrifiants', 'gmao / atelier / carburant'],
   coordination: ['Dashboard Coordinateur', 'gmao / coordination'],
   rapports: ['Rapports & Exports', 'gmao / rapports'],
+  adminUsers: ['Gestion Utilisateurs', 'gmao / admin / utilisateurs'],
 };
-
-function showPage(id) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  document.getElementById('page-' + id)?.classList.add('active');
-  const info = pageTitles[id] || [id, ''];
-  document.getElementById('pageTitle').textContent = info[0];
-  document.getElementById('pagePath').textContent = info[1];
-  // mark nav
-  document.querySelectorAll('.nav-item').forEach(n => {
-    if (n.getAttribute('onclick')?.includes(id)) n.classList.add('active');
-  });
-  if (id === 'engins') renderEngins('');
-  notifPanel.classList.remove('open');
-}
 
 // ═══ ENGINS GRID ═══
 function renderEngins(filter) {
@@ -1770,14 +2223,11 @@ function renderEngins(filter) {
     </div>
   `).join('');
 }
-
 function filterEngins(val) { renderEngins(val); }
 
 // ═══ MODALS ═══
 function openModal(id) { document.getElementById(id)?.classList.add('open'); }
 function closeModal(id) { document.getElementById(id)?.classList.remove('open'); }
-
-// Close on overlay click
 document.querySelectorAll('.modal-overlay').forEach(o => {
   o.addEventListener('click', e => { if (e.target === o) o.classList.remove('open'); });
 });
@@ -1785,21 +2235,6 @@ document.querySelectorAll('.modal-overlay').forEach(o => {
 // ═══ NOTIFICATIONS ═══
 const notifPanel = document.getElementById('notifPanel');
 function toggleNotif() { notifPanel.classList.toggle('open'); }
-
-// ═══ ROLE ═══
-const roles = {
-  master: { name:'Super Admin', role:'Master Admin', init:'SA' },
-  chef_atelier: { name:'Chef Atelier', role:'Chef d\'Atelier', init:'CA' },
-  chef_parc: { name:'Chef de Parc', role:'Chef de Parc', init:'CP' },
-  coordinateur: { name:'Amine', role:'Coordinateur', init:'A' },
-};
-function changeRole(val) {
-  const r = roles[val];
-  document.getElementById('userNameDisplay').textContent = r.name;
-  document.getElementById('userRoleDisplay').textContent = r.role;
-  document.getElementById('avatarInitial').textContent = r.init;
-  showToast('Profil changé : ' + r.role);
-}
 
 // ═══ SECTION FILTER ═══
 function filterSection(section, el) {
@@ -1809,27 +2244,13 @@ function filterSection(section, el) {
 }
 
 // ═══ SAVE ACTIONS ═══
-function saveEngin() {
-  closeModal('modalEngin');
-  showToast('✓ Engin enregistré avec succès');
-}
-function saveIntervention() {
-  closeModal('modalIntervention');
-  showToast('✓ Ordre de travail INT-049 créé');
-}
-function savePiece() {
-  closeModal('modalPiece');
-  showToast('✓ Entrée stock enregistrée');
-}
-function closeSortie() {
-  closeModal('modalSortieStock');
-  showToast('✓ Sortie stock validée');
-}
+function saveEngin() { closeModal('modalEngin'); showToast('✓ Engin enregistré avec succès'); }
+function saveIntervention() { closeModal('modalIntervention'); showToast('✓ Ordre de travail INT-049 créé'); }
+function savePiece() { closeModal('modalPiece'); showToast('✓ Entrée stock enregistrée'); }
+function closeSortie() { closeModal('modalSortieStock'); showToast('✓ Sortie stock validée'); }
 function validTransfert(btn) {
-  btn.textContent = '✓ Validé';
-  btn.className = 'btn btn-success btn-sm';
-  btn.style.opacity = '.6';
-  btn.disabled = true;
+  btn.textContent = '✓ Validé'; btn.className = 'btn btn-success btn-sm';
+  btn.style.opacity = '.6'; btn.disabled = true;
   showToast('✓ Transfert validé par le Coordinateur');
 }
 function viewChantier(id) { showToast('Chantier ' + id + ' — Détail en cours de chargement...'); }
@@ -1847,131 +2268,69 @@ function generateRapport() {
 function exportXLSX() {
   const wb = XLSX.utils.book_new();
   const date = new Date().toISOString().slice(0,10);
-
-  // ── Feuille 1 : Parc Engins ──
-  const enginRows = [
-    ['N° Engin', 'Modèle', 'Type', 'Chantier', 'Heures', 'Statut']
-  ].concat(engins.map(e => [
-    e.id, e.name, e.type, e.chantier, e.heures,
-    e.statut === 'dispo' ? 'Disponible' : e.statut === 'panne' ? 'En panne' : 'Maintenance'
-  ]));
+  const enginRows = [['N° Engin','Modèle','Type','Chantier','Heures','Statut']]
+    .concat(engins.map(e => [e.id, e.name, e.type, e.chantier, e.heures,
+      e.statut==='dispo'?'Disponible':e.statut==='panne'?'En panne':'Maintenance']));
   const wsEngins = XLSX.utils.aoa_to_sheet(enginRows);
-  wsEngins['!cols'] = [14,22,18,14,12,14].map(w => ({ wch: w }));
+  wsEngins['!cols'] = [14,22,18,14,12,14].map(w=>({wch:w}));
   XLSX.utils.book_append_sheet(wb, wsEngins, 'Parc Engins');
-
-  // ── Feuille 2 : Interventions ──
-  const interventionData = [
-    ['N° OT', 'Engin', 'Panne', 'Section', 'Technicien', 'Date', 'Priorité', 'Statut'],
+  const wsOT = XLSX.utils.aoa_to_sheet([
+    ['N° OT','Engin','Panne','Section','Technicien','Date','Priorité','Statut'],
     ['INT-047','ENG-012 Pelle 320D','Circuit hydraulique','Mécanique','Youssef','14/01/2025','Urgent','En cours'],
     ['INT-048','ENG-007 Bulldozer D6T','Culasse fissurée','Mécanique','Hassan','13/01/2025','Urgent','Bloquée'],
     ['INT-045','ENG-003 Pelle 320D','Soudage bras','Soudage','Karim','12/01/2025','Normal','En cours'],
-    ['INT-044','ENG-019 Compacteur','Révision générale','Mécanique','Amine','12/01/2025','Normal','En cours'],
-    ['INT-043','ENG-011 Chargeuse','Remplacement pneus','Pneumatique','Omar','11/01/2025','Faible','Terminée'],
-  ];
-  const wsOT = XLSX.utils.aoa_to_sheet(interventionData);
-  wsOT['!cols'] = [10,22,22,14,12,12,10,12].map(w => ({ wch: w }));
+  ]);
+  wsOT['!cols'] = [10,22,22,14,12,12,10,12].map(w=>({wch:w}));
   XLSX.utils.book_append_sheet(wb, wsOT, 'Interventions');
-
-  // ── Feuille 3 : Stock Pièces ──
-  const stockData = [
-    ['Référence', 'Désignation', 'Catégorie', 'Qté', 'Seuil Min.', 'Unité', 'Prix Unit. (MAD)', 'Fournisseur', 'Statut'],
+  const wsStock = XLSX.utils.aoa_to_sheet([
+    ['Référence','Désignation','Catégorie','Qté','Seuil Min.','Unité','Prix Unit. (MAD)','Fournisseur','Statut'],
     ['FH-001','Filtre à huile moteur','Filtration',0,5,'Pcs',85,'Autoparts Casablanca','Rupture'],
     ['JC-003','Joint de culasse D6T','Joints',2,5,'Pcs',320,'CAT Maroc','Critique'],
     ['HU-005','Huile moteur 15W40','Lubrifiants',48,20,'Litres',28,'Afriquia Lubricants','OK'],
-    ['PC-012','Plaquettes de frein','Freinage',12,8,'Jeux',240,'Frein-Auto Maroc','OK'],
-    ['FC-007','Filtre carburant','Filtration',6,8,'Pcs',95,'Autoparts Casablanca','Bas'],
-    ['RL-002','Roulement à billes 6205','Roulements',24,10,'Pcs',65,'SKF Maroc','OK'],
-    ['TS-009','Tuyau souple hydraulique','Hydraulique',8,5,'Mètres',185,'Parker Maroc','OK'],
-  ];
-  const wsStock = XLSX.utils.aoa_to_sheet(stockData);
-  wsStock['!cols'] = [10,28,14,6,10,8,18,22,10].map(w => ({ wch: w }));
+  ]);
+  wsStock['!cols'] = [10,28,14,6,10,8,18,22,10].map(w=>({wch:w}));
   XLSX.utils.book_append_sheet(wb, wsStock, 'Stock Pièces');
-
-  // ── Feuille 4 : Carburant ──
-  const carburantData = [
-    ['Date', 'N° Engin', 'Chauffeur', 'Litres', 'KM / Heures', 'Chantier', 'Validé'],
+  const wsCarb = XLSX.utils.aoa_to_sheet([
+    ['Date','N° Engin','Chauffeur','Litres','KM / Heures','Chantier','Validé'],
     ['14/01/2025','ENG-007','Ahmed',120,'4 820 h','CH-N3','Oui'],
     ['14/01/2025','ENG-015','Mustapha',85,'3 210 h','CH-N3','Oui'],
-    ['13/01/2025','ENG-011','Khalid',95,'2 870 h','Base','En attente'],
-    ['13/01/2025','ENG-003','Said',110,'5 120 h','CH-S2','Oui'],
-  ];
-  const wsCarb = XLSX.utils.aoa_to_sheet(carburantData);
-  wsCarb['!cols'] = [14,12,14,8,12,10,12].map(w => ({ wch: w }));
+  ]);
+  wsCarb['!cols'] = [14,12,14,8,12,10,12].map(w=>({wch:w}));
   XLSX.utils.book_append_sheet(wb, wsCarb, 'Carburant');
-
-  // ── Feuille 5 : Chantiers ──
-  const chantierData = [
-    ['Référence', 'Désignation', 'Lieu', 'Engins Affectés', 'Responsable', 'Statut'],
-    ['CH-N3','Terrassement Route Nationale','Benslimane','ENG-007, ENG-011, ENG-015','M. Benali','Actif'],
-    ['CH-A1','Fondations Zone Industrielle','Berrechid','ENG-012, ENG-017','M. Khalid','Actif'],
-    ['CH-S2','Aménagement Parking Commercial','Settat','ENG-003, ENG-009','M. Rachid','Pause'],
-    ['CH-K1','Voirie Résidentielle','Khouribga','ENG-021, ENG-024','M. Said','Actif'],
-  ];
-  const wsChant = XLSX.utils.aoa_to_sheet(chantierData);
-  wsChant['!cols'] = [10,32,14,26,14,10].map(w => ({ wch: w }));
-  XLSX.utils.book_append_sheet(wb, wsChant, 'Chantiers');
-
-  // ── Téléchargement ──
   XLSX.writeFile(wb, 'GMAO_Rapport_' + date + '.xlsx');
-  showToast('✓ Export XLSX téléchargé — 5 feuilles');
+  showToast('✓ Export XLSX téléchargé');
 }
 
 function exportPDF() {
   const win = window.open('', '_blank');
-  win.document.write(`
-    <html><head><title>Rapport GMAO</title>
-    <style>
-      body{font-family:Arial,sans-serif;padding:30px;color:#111;font-size:13px}
-      h1{font-size:22px;border-bottom:2px solid #f59e0b;padding-bottom:8px;margin-bottom:20px}
-      h2{font-size:15px;margin-top:24px;color:#374151}
-      table{width:100%;border-collapse:collapse;margin-top:10px}
-      th{background:#f3f4f6;padding:8px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em}
-      td{padding:8px;border-bottom:1px solid #e5e7eb;font-size:12px}
-      .badge{display:inline-block;padding:2px 8px;border-radius:2px;font-size:10px;font-weight:600}
-      .ok{background:#d1fae5;color:#065f46}.warn{background:#fef3c7;color:#92400e}.danger{background:#fee2e2;color:#991b1b}
-      .kpi-row{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:16px 0}
-      .kpi{background:#f9fafb;border:1px solid #e5e7eb;padding:14px;border-radius:4px}
-      .kpi-val{font-size:28px;font-weight:700;color:#f59e0b}
-      .kpi-label{font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:.08em}
-    </style></head><body>
-    <h1>⬡ Rapport GMAO — Parc & Atelier</h1>
-    <p style="color:#6b7280;font-size:11px">Généré le ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')}</p>
-    <div class="kpi-row">
-      <div class="kpi"><div class="kpi-label">Engins Actifs</div><div class="kpi-val">24 / 30</div></div>
-      <div class="kpi"><div class="kpi-label">Taux Disponibilité</div><div class="kpi-val">80%</div></div>
-      <div class="kpi"><div class="kpi-label">OT Ouverts</div><div class="kpi-val">5</div></div>
-    </div>
-    <h2>État du Parc</h2>
-    <table>
-      <tr><th>N° Engin</th><th>Modèle</th><th>Chantier</th><th>Heures</th><th>Statut</th></tr>
-      ${engins.map(e=>`<tr>
-        <td>${e.id}</td><td>${e.name}</td><td>${e.chantier}</td><td>${e.heures}</td>
-        <td><span class="badge ${e.statut==='dispo'?'ok':e.statut==='panne'?'danger':'warn'}">
-          ${e.statut==='dispo'?'Disponible':e.statut==='panne'?'En panne':'Maintenance'}</span></td>
-      </tr>`).join('')}
-    </table>
-    <h2>Alertes Stock</h2>
-    <table>
-      <tr><th>Référence</th><th>Pièce</th><th>Quantité</th><th>Seuil</th><th>Statut</th></tr>
-      <tr><td>FH-001</td><td>Filtre à huile</td><td>0</td><td>5</td><td><span class="badge danger">Rupture</span></td></tr>
-      <tr><td>JC-003</td><td>Joint de culasse D6T</td><td>2</td><td>5</td><td><span class="badge danger">Critique</span></td></tr>
-    </table>
-    <p style="margin-top:40px;font-size:10px;color:#9ca3af;border-top:1px solid #e5e7eb;padding-top:10px">
-      GMAO Parc & Atelier — Document confidentiel — Precision Logistics
-    </p>
-    </body></html>
-  `);
-  win.document.close();
-  win.print();
+  win.document.write(`<html><head><title>Rapport GMAO</title>
+  <style>body{font-family:Arial,sans-serif;padding:30px;color:#111;font-size:13px}
+  h1{font-size:22px;border-bottom:2px solid #f59e0b;padding-bottom:8px;margin-bottom:20px}
+  h2{font-size:15px;margin-top:24px;color:#374151}
+  table{width:100%;border-collapse:collapse;margin-top:10px}
+  th{background:#f3f4f6;padding:8px;text-align:left;font-size:11px;text-transform:uppercase}
+  td{padding:8px;border-bottom:1px solid #e5e7eb;font-size:12px}
+  .ok{background:#d1fae5;color:#065f46;padding:2px 8px;border-radius:2px;font-size:10px}
+  .warn{background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:2px;font-size:10px}
+  .danger{background:#fee2e2;color:#991b1b;padding:2px 8px;border-radius:2px;font-size:10px}
+  </style></head><body>
+  <h1>⬡ Rapport GMAO — Parc & Atelier</h1>
+  <p style="color:#6b7280;font-size:11px">Généré le ${new Date().toLocaleDateString('fr-FR')} — Utilisateur : ${currentUser?.name||'—'}</p>
+  <h2>État du Parc</h2>
+  <table><tr><th>N° Engin</th><th>Modèle</th><th>Chantier</th><th>Heures</th><th>Statut</th></tr>
+  ${engins.map(e=>`<tr><td>${e.id}</td><td>${e.name}</td><td>${e.chantier}</td><td>${e.heures}</td>
+  <td><span class="${e.statut==='dispo'?'ok':e.statut==='panne'?'danger':'warn'}">${e.statut==='dispo'?'Disponible':e.statut==='panne'?'En panne':'Maintenance'}</span></td></tr>`).join('')}
+  </table>
+  <p style="margin-top:40px;font-size:10px;color:#9ca3af;border-top:1px solid #e5e7eb;padding-top:10px">
+  GMAO Parc & Atelier — Document confidentiel — Precision Logistics</p>
+  </body></html>`);
+  win.document.close(); win.print();
   showToast('✓ PDF généré');
 }
 
-// ═══ STOCK FILTER ═══
 function filterStock(q) {
-  const rows = document.querySelectorAll('#stockTable tr');
-  rows.forEach(r => {
-    const text = r.textContent.toLowerCase();
-    r.style.display = text.includes(q.toLowerCase()) ? '' : 'none';
+  document.querySelectorAll('#stockTable tr').forEach(r => {
+    r.style.display = r.textContent.toLowerCase().includes(q.toLowerCase()) ? '' : 'none';
   });
 }
 
@@ -1982,19 +2341,52 @@ function showToast(msg) {
   Object.assign(t.style, {
     position:'fixed', bottom:'24px', right:'24px',
     background:'#1d242d', border:'1px solid #2d3847',
-    color:'#e2e8f0', padding:'10px 16px',
-    borderRadius:'4px', fontSize:'12px',
-    fontFamily:"'IBM Plex Mono', monospace",
+    color:'#e2e8f0', padding:'10px 16px', borderRadius:'4px',
+    fontSize:'12px', fontFamily:"'IBM Plex Mono',monospace",
     zIndex:'9999', boxShadow:'0 8px 24px rgba(0,0,0,.4)',
-    animation:'slideIn .2s ease',
-    borderLeft:'3px solid #f59e0b'
+    borderLeft:'3px solid #f59e0b', maxWidth:'320px'
   });
   document.body.appendChild(t);
-  setTimeout(() => t.remove(), 3000);
+  setTimeout(() => t.remove(), 3500);
 }
 
-// ═══ INIT ═══
-renderEngins('');
+// ═══ INIT — show login only ═══
+// App starts locked, loginScreen is visible by default
+document.getElementById('loginCode').focus();
 </script>
+<!-- Modal: Edit User Code -->
+<div class="modal-overlay" id="modalEditCode">
+  <div class="modal" style="width:420px">
+    <div class="modal-header">
+      <div class="modal-title">🔑 Modifier le Code d'Accès</div>
+      <button class="modal-close" onclick="closeModal('modalEditCode')">✕</button>
+    </div>
+    <div style="padding:20px;display:flex;flex-direction:column;gap:16px">
+      <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--surface2);border-radius:4px;border:1px solid var(--border)">
+        <div class="user-row-avatar" id="editUserAvatar" style="width:40px;height:40px">M</div>
+        <div>
+          <div style="font-size:13px;font-weight:600" id="editUserName">—</div>
+          <div style="font-family:var(--font-mono);font-size:9px;color:var(--text3)" id="editUserRole">—</div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Code Actuel</label>
+        <div class="code-display" id="editCurrentCode">——</div>
+      </div>
+      <div class="form-group">
+        <label>Nouveau Code (4–8 caractères)</label>
+        <input class="login-input" id="newCodeInput" type="text" maxlength="8" placeholder="Ex: ATELIER2"
+          style="text-transform:uppercase;letter-spacing:.2em"
+          oninput="this.value=this.value.toUpperCase()">
+      </div>
+      <button class="btn btn-primary" style="width:100%" onclick="generateRandom()">↺ Générer Code Aléatoire</button>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modalEditCode')">Annuler</button>
+      <button class="btn btn-primary" onclick="saveNewCode()">✓ Enregistrer</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
