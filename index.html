@@ -841,6 +841,15 @@
       </div>
     </div>
 
+    <!-- WORKFLOW -->
+    <div class="sidebar-section" id="sectionWorkflow">
+      <div class="sidebar-section-label">Workflow</div>
+      <div class="nav-item" id="navTaches" onclick="showPage('taches')">
+        <span class="nav-icon">📨</span> Mes Tâches
+        <span class="nav-badge danger" id="taskInboxBadge" style="display:none">0</span>
+      </div>
+    </div>
+
     <!-- COORDINATION -->
     <div class="sidebar-section">
       <div class="sidebar-section-label">Coordination</div>
@@ -1111,6 +1120,8 @@
                 <option value="panne">En panne</option>
                 <option value="maintenance">Maintenance</option>
               </select>
+              <button class="btn btn-warn btn-sm" id="btnDemanderInter" onclick="openDemanderIntervention()" style="display:none">⚙ Demander Intervention</button>
+              <button class="btn btn-ghost btn-sm" id="btnAssignerTache" onclick="openAssignerTache()">📨 Assigner Tâche</button>
               <button class="btn btn-primary btn-sm" onclick="openModal('modalEngin')">+ Nouvel Engin</button>
             </div>
           </div>
@@ -1708,6 +1719,46 @@
         </div>
       </div>
 
+      <!-- ════ PAGE: TÂCHES (Workflow) ════ -->
+      <div class="page" id="page-taches" style="gap:16px">
+        <div class="stats-row">
+          <div class="stat-card red"><div class="stat-label">À Traiter</div><div class="stat-value" id="taskStatTodo">0</div><div class="stat-sub">Reçues, en attente</div></div>
+          <div class="stat-card accent"><div class="stat-label">En Cours</div><div class="stat-value" id="taskStatProgress">0</div></div>
+          <div class="stat-card green"><div class="stat-label">Terminées</div><div class="stat-value" id="taskStatDone">0</div></div>
+          <div class="stat-card blue"><div class="stat-label">Envoyées par moi</div><div class="stat-value" id="taskStatSent">0</div></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">📨 Tâches & Demandes d'Intervention</div>
+            <div style="display:flex;gap:8px;margin-left:auto;align-items:center">
+              <select id="taskFilterScope" style="width:auto;padding:4px 8px;font-size:11px" onchange="renderTaches()">
+                <option value="inbox">📥 Reçues (moi)</option>
+                <option value="sent">📤 Envoyées (moi)</option>
+                <option value="all">🌐 Toutes (Coordinateur)</option>
+              </select>
+              <select id="taskFilterStatut" style="width:auto;padding:4px 8px;font-size:11px" onchange="renderTaches()">
+                <option value="">Tous statuts</option>
+                <option value="Nouvelle">Nouvelle</option>
+                <option value="En cours">En cours</option>
+                <option value="Terminée">Terminée</option>
+                <option value="Refusée">Refusée</option>
+              </select>
+              <button class="btn btn-warn btn-sm" onclick="openDemanderIntervention()">⚙ Demander Intervention</button>
+              <button class="btn btn-primary btn-sm" onclick="openAssignerTache()">+ Nouvelle Tâche</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th>N°</th><th>Type</th><th>Sujet</th><th>De</th><th>À</th><th>Date</th><th>Priorité</th><th>Statut</th><th>Actions</th>
+              </tr></thead>
+              <tbody id="tasksTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
       <!-- ════ PAGE: ADMIN UTILISATEURS ════ -->
       <div class="page" id="page-adminUsers" style="gap:16px">
         <div class="stats-row">
@@ -2177,6 +2228,93 @@
   </div>
 </div>
 
+<!-- Modal: Demander Intervention (Chef de Parc → Chef d'Atelier) -->
+<div class="modal-overlay" id="modalDemanderInter">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">⚙ Demander une Intervention</div>
+      <button class="modal-close" onclick="closeModal('modalDemanderInter')">✕</button>
+    </div>
+    <div style="padding:0 16px 8px"><div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:.08em">→ La demande crée un OT visible immédiatement par le Chef d'Atelier</div></div>
+    <div class="form-grid">
+      <div class="form-group"><label>Engin concerné</label><select id="diEngin"></select></div>
+      <div class="form-group"><label>Section Atelier</label>
+        <select id="diSection">
+          <option>Mécanique</option><option>Soudage</option><option>Sablage</option>
+          <option>Peinture</option><option>Tour-Fraisage</option><option>Pneumatique</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Priorité</label>
+        <select id="diPriorite"><option>Urgent</option><option selected>Normal</option><option>Faible</option></select>
+      </div>
+      <div class="form-group"><label>Chef d'Atelier destinataire</label><select id="diDest"></select></div>
+      <div class="form-group full"><label>Description Panne / Demande</label><textarea id="diPanne" placeholder="Décrire la panne observée sur l'engin..."></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modalDemanderInter')">Annuler</button>
+      <button class="btn btn-warn" onclick="submitDemanderIntervention()">⚙ Envoyer la Demande</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Assigner Tâche -->
+<div class="modal-overlay" id="modalAssignerTache">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">📨 Assigner une Tâche</div>
+      <button class="modal-close" onclick="closeModal('modalAssignerTache')">✕</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group"><label>Destinataire</label><select id="atDest"></select></div>
+      <div class="form-group"><label>Priorité</label>
+        <select id="atPriorite"><option>Urgent</option><option selected>Normal</option><option>Faible</option></select>
+      </div>
+      <div class="form-group full"><label>Sujet</label><input id="atSujet" placeholder="Ex: Vérifier niveau d'huile ENG-019"></div>
+      <div class="form-group full"><label>Description</label><textarea id="atDesc" placeholder="Détails de la tâche..."></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modalAssignerTache')">Annuler</button>
+      <button class="btn btn-primary" onclick="submitAssignerTache()">📨 Envoyer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Détail Tâche -->
+<div class="modal-overlay" id="modalTacheDetail">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">📄 Tâche — <span id="tdId">—</span></div>
+      <button class="modal-close" onclick="closeModal('modalTacheDetail')">✕</button>
+    </div>
+    <div style="padding:16px;display:flex;flex-direction:column;gap:14px">
+      <div class="three-col" style="gap:10px">
+        <div><div class="stat-label">Type</div><div style="font-weight:600;margin-top:4px;font-size:12px" id="tdType">—</div></div>
+        <div><div class="stat-label">De</div><div style="font-weight:600;margin-top:4px;font-size:12px" id="tdFrom">—</div></div>
+        <div><div class="stat-label">À</div><div style="font-weight:600;margin-top:4px;font-size:12px" id="tdTo">—</div></div>
+        <div><div class="stat-label">Date</div><div style="font-family:var(--font-mono);font-size:11px;margin-top:4px" id="tdDate">—</div></div>
+        <div><div class="stat-label">Priorité</div><div style="margin-top:4px" id="tdPrio">—</div></div>
+        <div><div class="stat-label">Statut</div><div style="margin-top:4px" id="tdStat">—</div></div>
+      </div>
+      <div><div class="stat-label">Sujet</div><div style="font-weight:600;margin-top:4px;font-size:13px" id="tdSujet">—</div></div>
+      <div><div class="stat-label">Description</div><div style="margin-top:4px;font-size:12px;color:var(--text2);white-space:pre-wrap" id="tdDesc">—</div></div>
+      <div class="form-group" id="tdReassignWrap" style="display:none">
+        <label>Réassigner à</label><select id="tdReassign"></select>
+      </div>
+      <div class="form-group">
+        <label>Réponse / Compte-rendu</label>
+        <textarea id="tdReponse" placeholder="Ajouter une réponse..." style="min-height:60px"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modalTacheDetail')">Fermer</button>
+      <button class="btn btn-ghost btn-sm" id="tdBtnReassign" onclick="reassignTache()" style="display:none">↪ Réassigner</button>
+      <button class="btn btn-danger btn-sm" id="tdBtnRefuse" onclick="updateTacheStatut('Refusée')">✕ Refuser</button>
+      <button class="btn btn-primary btn-sm" id="tdBtnProgress" onclick="updateTacheStatut('En cours')">▶ Prendre en charge</button>
+      <button class="btn btn-success btn-sm" id="tdBtnDone" onclick="updateTacheStatut('Terminée')">✓ Terminer</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ═══════════════════════════════════════════════
 // SESSION & ACCESS CONTROL SYSTEM
@@ -2184,23 +2322,23 @@
 
 // Codes stockés en localStorage (persistants)
 const DEFAULT_USERS = [
-  { id:'master',       name:'Rami Mohamed Amine', role:'Master Admin',   init:'MA', avatarClass:'avatar-master',  code:'ADMIN2025', pages:['dashboard','engins','chantiers','receptionsPage','interventions','stock','carburant','coordination','rapports','adminUsers','historique'] },
-  { id:'chef_atelier', name:'Chef Atelier',        role:"Chef d'Atelier", init:'CA', avatarClass:'avatar-atelier', code:'ATELIER1',  pages:['interventions','carburant','historique'] },
-  { id:'chef_parc',    name:'Chef de Parc',         role:'Chef de Parc',   init:'CP', avatarClass:'avatar-parc',    code:'PARC2025',  pages:['dashboard','engins','chantiers','receptionsPage','historique'] },
-  { id:'coordinateur', name:'Amine',                role:'Coordinateur',   init:'A',  avatarClass:'avatar-coord',   code:'COORD01',   pages:['dashboard','engins','chantiers','receptionsPage','interventions','stock','carburant','coordination','rapports','historique'] },
-  { id:'magasinier',   name:'Magasinier',           role:'Magasinier',     init:'MG', avatarClass:'avatar-mag',     code:'STOCK25',   pages:['stock','historique'] },
+  { id:'master',       name:'Rami Mohamed Amine', role:'Master Admin',   init:'MA', avatarClass:'avatar-master',  code:'ADMIN2025', pages:['dashboard','engins','chantiers','receptionsPage','interventions','stock','carburant','coordination','rapports','adminUsers','historique','taches'] },
+  { id:'chef_atelier', name:'Chef Atelier',        role:"Chef d'Atelier", init:'CA', avatarClass:'avatar-atelier', code:'ATELIER1',  pages:['interventions','carburant','historique','taches'] },
+  { id:'chef_parc',    name:'Chef de Parc',         role:'Chef de Parc',   init:'CP', avatarClass:'avatar-parc',    code:'PARC2025',  pages:['dashboard','engins','chantiers','receptionsPage','historique','taches'] },
+  { id:'coordinateur', name:'Amine',                role:'Coordinateur',   init:'A',  avatarClass:'avatar-coord',   code:'COORD01',   pages:['dashboard','engins','chantiers','receptionsPage','interventions','stock','carburant','coordination','rapports','historique','taches'] },
+  { id:'magasinier',   name:'Magasinier',           role:'Magasinier',     init:'MG', avatarClass:'avatar-mag',     code:'STOCK25',   pages:['stock','historique','taches'] },
 ];
 
 function getUsers() {
   const stored = localStorage.getItem('gmao_users');
   if (!stored) return DEFAULT_USERS;
   const users = JSON.parse(stored);
-  // Auto-migrate: add magasinier if missing, fix chef_atelier pages
+  // Auto-migrate: add magasinier if missing, fix chef_atelier pages, ensure 'taches' page on every role
   const hasMag = users.find(u => u.id === 'magasinier');
   const chefAt = users.find(u => u.id === 'chef_atelier');
   let changed = false;
   if (!hasMag) {
-    users.push({ id:'magasinier', name:'Magasinier', role:'Magasinier', init:'MG', avatarClass:'avatar-mag', code:'STOCK25', pages:['stock'] });
+    users.push({ id:'magasinier', name:'Magasinier', role:'Magasinier', init:'MG', avatarClass:'avatar-mag', code:'STOCK25', pages:['stock','historique','taches'] });
     changed = true;
   }
   // Remove 'stock' from chef_atelier pages if present
@@ -2208,6 +2346,10 @@ function getUsers() {
     chefAt.pages = chefAt.pages.filter(p => p !== 'stock');
     changed = true;
   }
+  // Auto-add 'taches' to every user
+  users.forEach(u => {
+    if (!u.pages.includes('taches')) { u.pages.push('taches'); changed = true; }
+  });
   if (changed) saveUsers(users);
   return users;
 }
@@ -2533,6 +2675,7 @@ const pageTitles = {
   rapports:       ['Rapports & Exports',       'gmao / rapports'],
   adminUsers:     ['Gestion Utilisateurs',     'gmao / admin / utilisateurs'],
   historique:     ['Historique Global',          'gmao / historique'],
+  taches:         ['Mes Tâches & Demandes',      'gmao / workflow / tâches'],
 };
 
 // ═══ ENGINS GRID ═══
@@ -3130,14 +3273,341 @@ function initScrollTop() {
   });
 }
 
+
+// ═══════════════════════════════════════════════
+// MODULE WORKFLOW — Tâches & Demandes d'Intervention
+// ═══════════════════════════════════════════════
+function getTaches() {
+  return JSON.parse(localStorage.getItem('gmao_taches') || '[]');
+}
+function saveTaches(list) {
+  localStorage.setItem('gmao_taches', JSON.stringify(list));
+}
+function nextTaskId() {
+  const list = getTaches();
+  const nums = list.map(t => parseInt((t.id||'').split('-')[1]||'0')).filter(n => !isNaN(n));
+  return 'TSK-' + String((Math.max(0, ...nums) || 0) + 1).padStart(4, '0');
+}
+function findUserById(id) { return getUsers().find(u => u.id === id); }
+
+// ── Ouvre le modal "Demander Intervention" (réservé chef_parc + master + coordinateur)
+function openDemanderIntervention() {
+  if (!currentUser) return;
+  // Remplir engins
+  const engSel = document.getElementById('diEngin');
+  const engs = getEngins();
+  engSel.innerHTML = engs.map(e => `<option value="${e.id} — ${e.name}">${e.id} — ${e.name}</option>`).join('') || '<option>—</option>';
+  // Destinataires : chef_atelier + coordinateur (fallback master)
+  const dests = getUsers().filter(u => ['chef_atelier','coordinateur'].includes(u.id));
+  document.getElementById('diDest').innerHTML = dests.map(u => `<option value="${u.id}">${u.name} — ${u.role}</option>`).join('');
+  document.getElementById('diPanne').value = '';
+  openModal('modalDemanderInter');
+}
+
+function submitDemanderIntervention() {
+  if (!currentUser) return;
+  const engin   = document.getElementById('diEngin').value;
+  const section = document.getElementById('diSection').value;
+  const prio    = document.getElementById('diPriorite').value;
+  const destId  = document.getElementById('diDest').value;
+  const panne   = document.getElementById('diPanne').value.trim();
+  if (!panne) { showToast('⚠ Description requise'); return; }
+  const dest = findUserById(destId);
+
+  // 1) Créer un OT visible immédiatement dans la page Interventions du Chef d'Atelier
+  const interList = getInterventions();
+  const otId = 'INT-' + String(parseInt(interList[0]?.id?.split('-')[1] || '050') + 1);
+  const newOT = {
+    id: otId, engin, panne, section, tech: '— À assigner —',
+    date: new Date().toLocaleDateString('fr-FR'),
+    priorite: prio, statut: 'En cours',
+    pieces: '', origine: 'Demande Chef de Parc — '+currentUser.name
+  };
+  interList.unshift(newOT);
+  saveInterventions(interList);
+
+  // 2) Créer la tâche workflow associée
+  const tasks = getTaches();
+  const t = {
+    id: nextTaskId(),
+    type: 'Demande Intervention',
+    sujet: '['+otId+'] '+section+' — '+engin,
+    description: panne,
+    fromId: currentUser.id, fromName: currentUser.name, fromRole: currentUser.role,
+    toId: destId, toName: dest.name, toRole: dest.role,
+    priorite: prio, statut: 'Nouvelle',
+    relatedOT: otId,
+    createdAt: new Date().toISOString(),
+    history: [{ at: new Date().toISOString(), by: currentUser.name, action: 'Création' }]
+  };
+  tasks.unshift(t);
+  saveTaches(tasks);
+
+  addHistory({
+    module: 'Workflow — Demande Intervention',
+    action: 'Demande envoyée',
+    cible: otId+' — '+engin,
+    avant: '—',
+    apres: 'Vers: '+dest.role+' | Priorité: '+prio,
+    details: panne
+  });
+
+  closeModal('modalDemanderInter');
+  if (document.getElementById('page-interventions')?.classList.contains('active')) renderInterventions();
+  if (document.getElementById('page-taches')?.classList.contains('active')) renderTaches();
+  refreshTaskBadge();
+  showToast('✓ Demande envoyée — OT '+otId+' créé pour '+dest.role);
+}
+
+// ── Ouvre le modal "Assigner Tâche" (tous rôles)
+function openAssignerTache() {
+  if (!currentUser) return;
+  const dests = getUsers().filter(u => u.id !== currentUser.id);
+  document.getElementById('atDest').innerHTML = dests.map(u => `<option value="${u.id}">${u.name} — ${u.role}</option>`).join('');
+  document.getElementById('atSujet').value = '';
+  document.getElementById('atDesc').value = '';
+  openModal('modalAssignerTache');
+}
+
+function submitAssignerTache() {
+  if (!currentUser) return;
+  const destId = document.getElementById('atDest').value;
+  const sujet  = document.getElementById('atSujet').value.trim();
+  const desc   = document.getElementById('atDesc').value.trim();
+  const prio   = document.getElementById('atPriorite').value;
+  if (!sujet) { showToast('⚠ Sujet requis'); return; }
+  const dest = findUserById(destId);
+  const tasks = getTaches();
+  const t = {
+    id: nextTaskId(),
+    type: 'Tâche',
+    sujet, description: desc,
+    fromId: currentUser.id, fromName: currentUser.name, fromRole: currentUser.role,
+    toId: destId, toName: dest.name, toRole: dest.role,
+    priorite: prio, statut: 'Nouvelle',
+    createdAt: new Date().toISOString(),
+    history: [{ at: new Date().toISOString(), by: currentUser.name, action: 'Création' }]
+  };
+  tasks.unshift(t);
+  saveTaches(tasks);
+  addHistory({
+    module: 'Workflow — Tâches',
+    action: 'Tâche assignée',
+    cible: t.id+' — '+sujet,
+    avant: '—',
+    apres: 'Vers: '+dest.name+' ('+dest.role+') | Prio: '+prio,
+    details: desc
+  });
+  closeModal('modalAssignerTache');
+  if (document.getElementById('page-taches')?.classList.contains('active')) renderTaches();
+  refreshTaskBadge();
+  showToast('✓ Tâche envoyée à '+dest.name);
+}
+
+// ── Affiche la table des tâches selon le scope
+function renderTaches() {
+  if (!currentUser) return;
+  const tbody = document.getElementById('tasksTable');
+  if (!tbody) return;
+  const scopeSel = document.getElementById('taskFilterScope');
+  const statSel  = document.getElementById('taskFilterStatut');
+  const isCoord = currentUser.id === 'coordinateur' || currentUser.id === 'master';
+  // Si pas coordinateur, retirer "Toutes" du select
+  if (scopeSel) {
+    const allOpt = scopeSel.querySelector('option[value="all"]');
+    if (allOpt) allOpt.style.display = isCoord ? '' : 'none';
+    if (!isCoord && scopeSel.value === 'all') scopeSel.value = 'inbox';
+  }
+
+  const all = getTaches();
+  const scope = scopeSel?.value || 'inbox';
+  const statF = statSel?.value || '';
+  let list;
+  if (scope === 'inbox')      list = all.filter(t => t.toId === currentUser.id);
+  else if (scope === 'sent')  list = all.filter(t => t.fromId === currentUser.id);
+  else                        list = all; // coordinator: all
+  if (statF) list = list.filter(t => t.statut === statF);
+
+  // Stats (toutes mes tâches reçues)
+  const inbox = all.filter(t => t.toId === currentUser.id);
+  const sent  = all.filter(t => t.fromId === currentUser.id);
+  document.getElementById('taskStatTodo').textContent     = inbox.filter(t => t.statut === 'Nouvelle').length;
+  document.getElementById('taskStatProgress').textContent = inbox.filter(t => t.statut === 'En cours').length;
+  document.getElementById('taskStatDone').textContent     = inbox.filter(t => t.statut === 'Terminée').length;
+  document.getElementById('taskStatSent').textContent     = sent.length;
+
+  if (!list.length) {
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:24px">Aucune tâche</td></tr>';
+    return;
+  }
+  tbody.innerHTML = list.map(t => {
+    const prioBadge = t.priorite==='Urgent'?'badge-danger':t.priorite==='Normal'?'badge-blue':'badge-gray';
+    const statBadge = t.statut==='Terminée'?'badge-ok':t.statut==='En cours'?'badge-warn':t.statut==='Refusée'?'badge-danger':'badge-blue';
+    const typeChip  = t.type==='Demande Intervention' ? '<span class="chip mec" style="cursor:default">⚙ Intervention</span>' : '<span class="chip" style="background:var(--surface3);color:var(--text2);cursor:default">📨 Tâche</span>';
+    const date = new Date(t.createdAt).toLocaleString('fr-FR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
+    return `<tr>
+      <td class="mono">${t.id}</td>
+      <td>${typeChip}</td>
+      <td style="max-width:240px">${t.sujet}</td>
+      <td style="font-size:11px">${t.fromName}<br><span style="color:var(--text3);font-size:10px">${t.fromRole}</span></td>
+      <td style="font-size:11px">${t.toName}<br><span style="color:var(--text3);font-size:10px">${t.toRole}</span></td>
+      <td class="mono" style="font-size:10px">${date}</td>
+      <td><span class="badge ${prioBadge}">${t.priorite}</span></td>
+      <td><span class="badge ${statBadge}">${t.statut}</span></td>
+      <td><button class="btn btn-ghost btn-sm" onclick="openTacheDetail('${t.id}')">Ouvrir</button></td>
+    </tr>`;
+  }).join('');
+}
+
+let currentTacheId = null;
+function openTacheDetail(id) {
+  const t = getTaches().find(x => x.id === id);
+  if (!t) return;
+  currentTacheId = id;
+  document.getElementById('tdId').textContent = t.id;
+  document.getElementById('tdType').textContent = t.type;
+  document.getElementById('tdFrom').textContent = t.fromName + ' ('+t.fromRole+')';
+  document.getElementById('tdTo').textContent = t.toName + ' ('+t.toRole+')';
+  document.getElementById('tdDate').textContent = new Date(t.createdAt).toLocaleString('fr-FR');
+  document.getElementById('tdPrio').innerHTML = `<span class="badge ${t.priorite==='Urgent'?'badge-danger':t.priorite==='Normal'?'badge-blue':'badge-gray'}">${t.priorite}</span>`;
+  document.getElementById('tdStat').innerHTML = `<span class="badge ${t.statut==='Terminée'?'badge-ok':t.statut==='En cours'?'badge-warn':t.statut==='Refusée'?'badge-danger':'badge-blue'}">${t.statut}</span>`;
+  document.getElementById('tdSujet').textContent = t.sujet;
+  document.getElementById('tdDesc').textContent  = t.description || '—';
+  document.getElementById('tdReponse').value = '';
+
+  // Permissions sur les actions
+  const isRecipient = currentUser && t.toId === currentUser.id;
+  const isCoord = currentUser && (currentUser.id === 'coordinateur' || currentUser.id === 'master');
+  const isFinal = ['Terminée','Refusée'].includes(t.statut);
+  const canAct  = (isRecipient || isCoord) && !isFinal;
+
+  document.getElementById('tdBtnProgress').style.display = (canAct && t.statut !== 'En cours') ? '' : 'none';
+  document.getElementById('tdBtnDone').style.display     = canAct ? '' : 'none';
+  document.getElementById('tdBtnRefuse').style.display   = (canAct && isRecipient) ? '' : 'none';
+
+  // Réassignation : coordinateur uniquement (et pas si terminée)
+  const reassignWrap = document.getElementById('tdReassignWrap');
+  const btnReassign  = document.getElementById('tdBtnReassign');
+  if (isCoord && !isFinal) {
+    reassignWrap.style.display = '';
+    btnReassign.style.display = '';
+    const dests = getUsers().filter(u => u.id !== t.toId);
+    document.getElementById('tdReassign').innerHTML = dests.map(u => `<option value="${u.id}">${u.name} — ${u.role}</option>`).join('');
+  } else {
+    reassignWrap.style.display = 'none';
+    btnReassign.style.display = 'none';
+  }
+  openModal('modalTacheDetail');
+}
+
+function updateTacheStatut(newStatut) {
+  if (!currentTacheId) return;
+  const list = getTaches();
+  const t = list.find(x => x.id === currentTacheId);
+  if (!t) return;
+  const old = t.statut;
+  const reponse = document.getElementById('tdReponse').value.trim();
+  t.statut = newStatut;
+  if (reponse) {
+    t.description = (t.description||'') + '\n\n[' + new Date().toLocaleString('fr-FR') + ' — ' + currentUser.name + '] ' + reponse;
+  }
+  t.history = t.history || [];
+  t.history.push({ at: new Date().toISOString(), by: currentUser.name, action: newStatut + (reponse ? ' (réponse)' : '') });
+  saveTaches(list);
+  // Si tâche liée à un OT et on la termine → marquer l'OT terminé
+  if (newStatut === 'Terminée' && t.relatedOT) {
+    const interList = getInterventions();
+    const ot = interList.find(i => i.id === t.relatedOT);
+    if (ot && ot.statut !== 'Terminée') {
+      ot.statut = 'Terminée';
+      saveInterventions(interList);
+    }
+  }
+  addHistory({
+    module: 'Workflow — Tâches',
+    action: 'Changement statut tâche',
+    cible: t.id + ' — ' + t.sujet,
+    avant: old,
+    apres: newStatut,
+    details: reponse || ''
+  });
+  closeModal('modalTacheDetail');
+  renderTaches();
+  refreshTaskBadge();
+  showToast('✓ Tâche '+t.id+' → '+newStatut);
+}
+
+function reassignTache() {
+  if (!currentTacheId) return;
+  const newToId = document.getElementById('tdReassign').value;
+  const list = getTaches();
+  const t = list.find(x => x.id === currentTacheId);
+  if (!t) return;
+  const dest = findUserById(newToId);
+  if (!dest) return;
+  const oldTo = t.toName + ' ('+t.toRole+')';
+  t.toId = newToId; t.toName = dest.name; t.toRole = dest.role;
+  t.statut = 'Nouvelle';
+  t.history = t.history || [];
+  t.history.push({ at: new Date().toISOString(), by: currentUser.name, action: 'Réassignée → '+dest.name });
+  saveTaches(list);
+  addHistory({
+    module: 'Workflow — Tâches',
+    action: 'Réassignation tâche (Coordinateur)',
+    cible: t.id+' — '+t.sujet,
+    avant: oldTo,
+    apres: dest.name+' ('+dest.role+')',
+    details: 'Par: '+currentUser.name
+  });
+  closeModal('modalTacheDetail');
+  renderTaches();
+  refreshTaskBadge();
+  showToast('↪ Tâche réassignée à '+dest.name);
+}
+
+// Badge "tâches reçues non traitées"
+function refreshTaskBadge() {
+  const badge = document.getElementById('taskInboxBadge');
+  if (!badge || !currentUser) return;
+  const n = getTaches().filter(t => t.toId === currentUser.id && t.statut === 'Nouvelle').length;
+  if (n > 0) { badge.textContent = n; badge.style.display = ''; }
+  else { badge.style.display = 'none'; }
+}
+
+// Hook : afficher/cacher "Demander Intervention" selon le rôle
+function applyWorkflowAccess() {
+  const btn = document.getElementById('btnDemanderInter');
+  if (btn && currentUser) {
+    const allowed = ['master','chef_parc','coordinateur'].includes(currentUser.id);
+    btn.style.display = allowed ? '' : 'none';
+  }
+  refreshTaskBadge();
+}
+
+// Patch showPage pour rendre la page tâches
+const _origShowPage = showPage;
+showPage = function(id) {
+  _origShowPage(id);
+  if (id === 'taches') renderTaches();
+};
+
+// Patch applyAccessControl pour brancher le workflow
+const _origApplyAccess = applyAccessControl;
+applyAccessControl = function(user) {
+  _origApplyAccess(user);
+  applyWorkflowAccess();
+};
+
 // ═══ INIT ═══
-const APP_VERSION = 'v3.1';
+const APP_VERSION = 'v3.2-workflow';
 if (localStorage.getItem('gmao_version') !== APP_VERSION) {
-  ['gmao_users','gmao_engins','gmao_interventions','gmao_stock','gmao_history','gmao_log'].forEach(k => localStorage.removeItem(k));
+  ['gmao_users','gmao_engins','gmao_interventions','gmao_stock','gmao_history','gmao_log','gmao_taches'].forEach(k => localStorage.removeItem(k));
   localStorage.setItem('gmao_version', APP_VERSION);
 }
 document.getElementById('loginCode').focus();
 initScrollTop();
+// Refresh badge périodiquement (multi-onglets)
+setInterval(() => { if (currentUser) refreshTaskBadge(); }, 5000);
 </script>
 
 <!-- Bouton Scroll To Top -->
