@@ -799,6 +799,9 @@
         <span class="nav-icon">🔐</span> Utilisateurs
         <span class="nav-badge ok">Admin</span>
       </div>
+      <div class="nav-item" id="navHistorique" onclick="showPage('historique')" style="display:none">
+        <span class="nav-icon">📜</span> Historique
+      </div>
     </div>
 
     <div class="sidebar-footer">
@@ -1684,6 +1687,60 @@
         </div>
       </div>
 
+      <!-- ════ PAGE: HISTORIQUE ════ -->
+      <div class="page" id="page-historique">
+        <div class="stats-row">
+          <div class="stat-card accent">
+            <div class="stat-label">Total Entrées</div>
+            <div class="stat-value" id="histCount">0</div>
+          </div>
+          <div class="stat-card blue"><div class="stat-label">Modules Tracés</div><div class="stat-value">6</div></div>
+          <div class="stat-card green"><div class="stat-label">Rétention</div><div class="stat-value" style="font-size:18px;padding-top:6px">500 max</div></div>
+          <div class="stat-card accent">
+            <div class="stat-label">Export</div>
+            <div style="margin-top:8px;display:flex;gap:6px">
+              <button class="btn btn-primary btn-sm" onclick="exportHistorique()">⬇ XLSX</button>
+              <button class="btn btn-danger btn-sm" onclick="clearHistorique()">🗑 Effacer</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">📜 Historique Global des Actions</div>
+            <div style="display:flex;gap:8px;margin-left:auto;align-items:center">
+              <select style="padding:5px 8px;font-size:11px;background:var(--surface3);border:1px solid var(--border2);color:var(--text);border-radius:3px;outline:none" onchange="renderHistorique(this.value)">
+                <option value="">Tous les modules</option>
+                <option value="Parc Engins">Parc Engins</option>
+                <option value="Atelier — Interventions">Interventions</option>
+                <option value="Stock & Magasin">Stock & Magasin</option>
+                <option value="Coordination">Coordination</option>
+                <option value="Admin">Admin</option>
+              </select>
+              <input type="search" placeholder="Rechercher..." style="width:180px;padding:5px 10px;font-size:11px" oninput="renderHistorique(this.value)">
+              <button class="btn btn-primary btn-sm" onclick="exportHistorique()">⬇ Télécharger XLSX</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th>Date / Heure</th>
+                <th>Utilisateur</th>
+                <th>Rôle</th>
+                <th>Module</th>
+                <th>Action</th>
+                <th>Cible</th>
+                <th style="color:var(--danger)">Avant</th>
+                <th style="color:var(--accent3)">Après</th>
+              </tr></thead>
+              <tbody id="histTable">
+                <tr><td colspan="8" style="text-align:center;padding:24px;color:var(--text3);font-family:var(--font-mono);font-size:11px">Aucun historique enregistré — Les actions s'afficheront ici</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
     </div><!-- /content -->
   </div><!-- /main -->
 </div><!-- /shell -->
@@ -1698,17 +1755,17 @@
       <button class="modal-close" onclick="closeModal('modalEngin')">✕</button>
     </div>
     <div class="form-grid">
-      <div class="form-group"><label>N° Interne</label><input placeholder="ENG-031"></div>
-      <div class="form-group"><label>Type / Modèle</label><input placeholder="Bulldozer CAT D6T"></div>
-      <div class="form-group"><label>N° Châssis</label><input placeholder="CAT00D6T..."></div>
-      <div class="form-group"><label>N° Série</label><input placeholder="SN-2024-..."></div>
-      <div class="form-group"><label>Année</label><input type="number" placeholder="2022"></div>
-      <div class="form-group"><label>KM / Heures actuels</label><input placeholder="0 h"></div>
-      <div class="form-group"><label>Chantier / Localisation</label><input placeholder="Base"></div>
-      <div class="form-group"><label>Statut Initial</label>
-        <select><option>Disponible</option><option>En maintenance</option><option>En panne</option></select>
+      <div class="form-group"><label>N° Interne</label><input id="newEnginId" placeholder="ENG-031"></div>
+      <div class="form-group"><label>Modèle</label><input id="newEnginName" placeholder="Bulldozer CAT D6T"></div>
+      <div class="form-group"><label>Type</label><input id="newEnginType" placeholder="Bulldozer"></div>
+      <div class="form-group"><label>N° Châssis</label><input id="newEnginChassis" placeholder="CAT00D6T..."></div>
+      <div class="form-group"><label>N° Série</label><input id="newEnginSerie" placeholder="SN-2024-..."></div>
+      <div class="form-group"><label>Année</label><input id="newEnginAnnee" type="number" placeholder="2022"></div>
+      <div class="form-group"><label>KM / Heures actuels</label><input id="newEnginHeures" placeholder="0 h"></div>
+      <div class="form-group"><label>Chantier / Localisation</label><input id="newEnginChantier" placeholder="Base"></div>
+      <div class="form-group full"><label>Statut Initial</label>
+        <select id="newEnginStatut"><option value="dispo">Disponible</option><option value="maintenance">En maintenance</option><option value="panne">En panne</option></select>
       </div>
-      <div class="form-group full"><label>Observations</label><textarea placeholder="Notes techniques..."></textarea></div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modalEngin')">Annuler</button>
@@ -1725,29 +1782,27 @@
       <button class="modal-close" onclick="closeModal('modalIntervention')">✕</button>
     </div>
     <div class="form-grid">
-      <div class="form-group"><label>N° OT (auto)</label><input value="INT-049" readonly></div>
       <div class="form-group"><label>Engin</label>
-        <select>
+        <select id="otNewEngin">
           <option>ENG-007 — Bulldozer D6T</option>
           <option>ENG-012 — Pelle 320D</option>
           <option>ENG-019 — Compacteur 430E</option>
         </select>
       </div>
       <div class="form-group"><label>Section Atelier</label>
-        <select>
+        <select id="otNewSection">
           <option>Mécanique</option><option>Soudage</option><option>Sablage</option>
           <option>Peinture</option><option>Tour-Fraisage</option><option>Pneumatique</option>
         </select>
       </div>
       <div class="form-group"><label>Priorité</label>
-        <select><option>Urgent</option><option>Normal</option><option>Faible</option></select>
+        <select id="otNewPriorite"><option>Urgent</option><option>Normal</option><option>Faible</option></select>
       </div>
       <div class="form-group"><label>Technicien assigné</label>
-        <select><option>Hassan</option><option>Youssef</option><option>Karim</option><option>Omar</option><option>Amine</option></select>
+        <select id="otNewTech"><option>Hassan</option><option>Youssef</option><option>Karim</option><option>Omar</option><option>Amine</option></select>
       </div>
-      <div class="form-group"><label>Date Prévue Fin</label><input type="date"></div>
-      <div class="form-group full"><label>Description Panne</label><textarea placeholder="Décrire la panne observée..."></textarea></div>
-      <div class="form-group full"><label>Pièces Requises</label><textarea placeholder="Liste des pièces nécessaires..."></textarea></div>
+      <div class="form-group full"><label>Description Panne</label><textarea id="otNewPanne" placeholder="Décrire la panne observée..."></textarea></div>
+      <div class="form-group full"><label>Pièces Requises</label><textarea id="otNewPieces" placeholder="Liste des pièces nécessaires..."></textarea></div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modalIntervention')">Annuler</button>
@@ -1760,45 +1815,33 @@
 <div class="modal-overlay" id="modalFicheIntervention">
   <div class="modal">
     <div class="modal-header">
-      <div class="modal-title">📄 Fiche Intervention — INT-047</div>
+      <div class="modal-title">📄 Fiche Intervention — <span id="otId">—</span></div>
       <button class="modal-close" onclick="closeModal('modalFicheIntervention')">✕</button>
     </div>
     <div style="padding:16px;display:flex;flex-direction:column;gap:14px">
       <div class="three-col" style="gap:10px">
-        <div><div class="stat-label">Engin</div><div style="font-weight:600;margin-top:4px">ENG-012 — Pelle 320D</div></div>
-        <div><div class="stat-label">Section</div><div style="font-weight:600;margin-top:4px;color:var(--accent2)">Mécanique</div></div>
-        <div><div class="stat-label">Technicien</div><div style="font-weight:600;margin-top:4px">Youssef</div></div>
-        <div><div class="stat-label">Date Ouverture</div><div style="font-family:var(--font-mono);font-size:11px;margin-top:4px">14/01/2025 — 08:00</div></div>
-        <div><div class="stat-label">Priorité</div><span class="badge badge-danger" style="margin-top:4px;display:inline-flex">Urgent</span></div>
-        <div><div class="stat-label">Statut</div><span class="badge badge-warn" style="margin-top:4px;display:inline-flex">En cours</span></div>
+        <div><div class="stat-label">Engin</div><div style="font-weight:600;margin-top:4px;font-size:12px" id="otEngin">—</div></div>
+        <div><div class="stat-label">Section</div><div style="font-weight:600;margin-top:4px;color:var(--accent2);font-size:12px" id="otSection">—</div></div>
+        <div><div class="stat-label">Technicien</div><div style="font-weight:600;margin-top:4px;font-size:12px" id="otTech">—</div></div>
+        <div><div class="stat-label">Date Ouverture</div><div style="font-family:var(--font-mono);font-size:11px;margin-top:4px" id="otDate">—</div></div>
+        <div><div class="stat-label">Pièces utilisées</div><div style="font-size:11px;margin-top:4px;color:var(--text2)" id="otPieces">—</div></div>
+        <div><div class="stat-label">Panne</div><div style="font-size:11px;margin-top:4px;color:var(--text2)" id="otPanne">—</div></div>
       </div>
-      <div>
-        <div class="stat-label" style="margin-bottom:5px">Description Panne</div>
-        <div style="font-size:12px;color:var(--text2);line-height:1.6;background:var(--surface2);padding:10px 12px;border-radius:3px;border:1px solid var(--border)">
-          Fuite importante sur le circuit hydraulique principal — joint de distributeur détérioré. Engin immobilisé chantier A1.
-        </div>
+      <div class="form-group">
+        <label>Statut</label>
+        <select id="otStatutEdit">
+          <option>En cours</option><option>Bloquée</option><option>En attente pièce</option><option>Terminée</option>
+        </select>
       </div>
-      <div>
-        <div class="stat-label" style="margin-bottom:5px">Pièces Utilisées</div>
-        <table><thead><tr><th>Pièce</th><th>Qté</th><th>Sortie Stock</th></tr></thead>
-        <tbody>
-          <tr><td>Tuyau hydraulique</td><td class="mono">2 m</td><td><span class="badge badge-ok">Confirmée</span></td></tr>
-          <tr><td>Joint distributeur</td><td class="mono">1 jeu</td><td><span class="badge badge-warn">À valider</span></td></tr>
-        </tbody></table>
-      </div>
-      <div>
-        <div class="stat-label" style="margin-bottom:5px">Mettre à jour le statut</div>
-        <div style="display:flex;gap:8px">
-          <select style="flex:1">
-            <option>En cours</option><option>En attente pièce</option><option>Suspendu</option><option>Terminé</option>
-          </select>
-          <button class="btn btn-primary">Mettre à jour</button>
-        </div>
+      <div class="form-group">
+        <label>Observation / Compte-rendu (optionnel)</label>
+        <textarea id="otObsEdit" placeholder="Ajouter une observation..." style="min-height:60px"></textarea>
       </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost btn-sm" onclick="exportPDF()">⬇ PDF</button>
       <button class="btn btn-ghost" onclick="closeModal('modalFicheIntervention')">Fermer</button>
+      <button class="btn btn-primary" id="otSaveBtn" onclick="saveOTEdit()">✓ Enregistrer</button>
     </div>
   </div>
 </div>
@@ -1811,22 +1854,20 @@
       <button class="modal-close" onclick="closeModal('modalPiece')">✕</button>
     </div>
     <div class="form-grid">
-      <div class="form-group"><label>Référence</label><input placeholder="FH-001"></div>
-      <div class="form-group"><label>Désignation</label><input placeholder="Filtre à huile moteur"></div>
+      <div class="form-group"><label>Référence</label><input id="esRefIn" placeholder="FH-001" oninput="this.value=this.value.toUpperCase()"></div>
+      <div class="form-group"><label>Désignation</label><input id="esNomIn" placeholder="Filtre à huile moteur"></div>
       <div class="form-group"><label>Catégorie</label>
-        <select><option>Filtration</option><option>Joints</option><option>Lubrifiants</option><option>Freinage</option><option>Hydraulique</option><option>Roulements</option><option>Électrique</option></select>
+        <select id="esCatIn"><option>Filtration</option><option>Joints</option><option>Lubrifiants</option><option>Freinage</option><option>Hydraulique</option><option>Roulements</option><option>Électrique</option></select>
       </div>
-      <div class="form-group"><label>Quantité Reçue</label><input type="number" placeholder="10"></div>
-      <div class="form-group"><label>Unité</label><select><option>Pcs</option><option>Litres</option><option>Kg</option><option>Mètres</option><option>Jeux</option></select></div>
-      <div class="form-group"><label>Prix Unitaire (MAD)</label><input type="number" placeholder="85"></div>
-      <div class="form-group"><label>Seuil Minimum</label><input type="number" placeholder="5"></div>
-      <div class="form-group"><label>Fournisseur</label><input placeholder="Autoparts Casablanca"></div>
-      <div class="form-group"><label>N° Bon Commande</label><input placeholder="BC-2025-..."></div>
-      <div class="form-group"><label>Date Réception</label><input type="date"></div>
+      <div class="form-group"><label>Quantité Reçue</label><input id="esQteIn" type="number" placeholder="10"></div>
+      <div class="form-group"><label>Unité</label><select id="esUniteIn"><option>Pcs</option><option>Litres</option><option>Kg</option><option>Mètres</option><option>Jeux</option></select></div>
+      <div class="form-group"><label>Prix Unitaire (MAD)</label><input id="esPrixIn" type="number" placeholder="85"></div>
+      <div class="form-group"><label>Seuil Minimum</label><input id="esSeuilIn" type="number" placeholder="5"></div>
+      <div class="form-group"><label>Fournisseur</label><input id="esFournIn" placeholder="Autoparts Casablanca"></div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modalPiece')">Annuler</button>
-      <button class="btn btn-primary" onclick="savePiece()">Enregistrer</button>
+      <button class="btn btn-primary" onclick="saveEntreeStock()">Enregistrer</button>
     </div>
   </div>
 </div>
@@ -1839,21 +1880,29 @@
       <button class="modal-close" onclick="closeModal('modalSortieStock')">✕</button>
     </div>
     <div class="form-grid">
-      <div class="form-group"><label>Pièce</label>
-        <select><option>FH-001 — Filtre à huile</option><option>HU-005 — Huile 15W40</option><option>TS-009 — Tuyau hydraulique</option></select>
+      <div class="form-group"><label>Référence Pièce</label>
+        <select id="soPieceRef">
+          <option value="FH-001">FH-001 — Filtre à huile</option>
+          <option value="JC-003">JC-003 — Joint de culasse</option>
+          <option value="HU-005">HU-005 — Huile 15W40</option>
+          <option value="PC-012">PC-012 — Plaquettes frein</option>
+          <option value="FC-007">FC-007 — Filtre carburant</option>
+          <option value="RL-002">RL-002 — Roulement 6205</option>
+          <option value="TS-009">TS-009 — Tuyau hydraulique</option>
+        </select>
       </div>
-      <div class="form-group"><label>Quantité Sortie</label><input type="number" placeholder="1"></div>
-      <div class="form-group"><label>Pour Intervention</label>
-        <select><option>INT-047</option><option>INT-048</option><option>INT-044</option></select>
+      <div class="form-group"><label>Quantité Sortie</label><input id="soQte" type="number" placeholder="1" min="1"></div>
+      <div class="form-group"><label>Pour Intervention (OT)</label>
+        <select id="soOT"><option>INT-047</option><option>INT-048</option><option>INT-045</option><option>INT-044</option><option>Autre</option></select>
       </div>
       <div class="form-group"><label>Validé par</label>
-        <select><option>Coordinateur (Amine)</option><option>Chef Atelier</option><option>Master Admin</option></select>
+        <select><option>Magasinier</option><option>Coordinateur</option><option>Master Admin</option></select>
       </div>
-      <div class="form-group full"><label>Motif</label><textarea placeholder="Raison de la sortie..."></textarea></div>
+      <div class="form-group full"><label>Motif</label><textarea id="soMotif" placeholder="Raison de la sortie..."></textarea></div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modalSortieStock')">Annuler</button>
-      <button class="btn btn-primary" onclick="closeSortie()">Valider Sortie</button>
+      <button class="btn btn-primary" onclick="saveSortieStock()">Valider Sortie</button>
     </div>
   </div>
 </div>
@@ -1930,6 +1979,63 @@
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modalReception')">Annuler</button>
       <button class="btn btn-primary">Enregistrer Réception</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Edit Engin -->
+<div class="modal-overlay" id="modalEditEngin">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">✎ Modifier la Fiche Engin</div>
+      <button class="modal-close" onclick="closeModal('modalEditEngin')">✕</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group"><label>N° Interne</label><input id="eeId" readonly style="opacity:.5"></div>
+      <div class="form-group"><label>Modèle</label><input id="eeName"></div>
+      <div class="form-group"><label>Type</label><input id="eeType"></div>
+      <div class="form-group"><label>N° Châssis</label><input id="eeChassis"></div>
+      <div class="form-group"><label>N° Série</label><input id="eeSerie"></div>
+      <div class="form-group"><label>Année</label><input id="eeAnnee" type="number"></div>
+      <div class="form-group"><label>KM / Heures</label><input id="eeHeures"></div>
+      <div class="form-group"><label>Chantier</label><input id="eeChantier"></div>
+      <div class="form-group full"><label>Statut</label>
+        <select id="eeStatut">
+          <option value="dispo">Disponible</option>
+          <option value="panne">En panne</option>
+          <option value="maintenance">Maintenance</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modalEditEngin')">Annuler</button>
+      <button class="btn btn-primary" onclick="saveEditEngin()">✓ Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Edit Stock -->
+<div class="modal-overlay" id="modalEditStock">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">✎ Modifier la Pièce</div>
+      <button class="modal-close" onclick="closeModal('modalEditStock')">✕</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group"><label>Référence</label><input id="esRef" readonly style="opacity:.5;font-family:var(--font-mono)"></div>
+      <div class="form-group"><label>Désignation</label><input id="esNom"></div>
+      <div class="form-group"><label>Catégorie</label><input id="esCat"></div>
+      <div class="form-group"><label>Quantité</label><input id="esQte" type="number"></div>
+      <div class="form-group"><label>Seuil Minimum</label><input id="esSeuil" type="number"></div>
+      <div class="form-group"><label>Unité</label>
+        <select id="esUnite"><option>Pcs</option><option>Litres</option><option>Kg</option><option>Mètres</option><option>Jeux</option></select>
+      </div>
+      <div class="form-group"><label>Prix Unitaire (MAD)</label><input id="esPrix" type="number" step="0.01"></div>
+      <div class="form-group"><label>Fournisseur</label><input id="esFourn"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modalEditStock')">Annuler</button>
+      <button class="btn btn-primary" onclick="saveEditStock()">✓ Enregistrer</button>
     </div>
   </div>
 </div>
@@ -2021,11 +2127,11 @@
 
 // Codes stockés en localStorage (persistants)
 const DEFAULT_USERS = [
-  { id:'master',       name:'Rami Mohamed Amine', role:'Master Admin',   init:'MA', avatarClass:'avatar-master',  code:'ADMIN2025', pages:['dashboard','engins','chantiers','receptionsPage','interventions','stock','carburant','coordination','rapports','adminUsers'] },
-  { id:'chef_atelier', name:'Chef Atelier',        role:"Chef d'Atelier", init:'CA', avatarClass:'avatar-atelier', code:'ATELIER1',  pages:['interventions','carburant'] },
-  { id:'chef_parc',    name:'Chef de Parc',         role:'Chef de Parc',   init:'CP', avatarClass:'avatar-parc',    code:'PARC2025',  pages:['dashboard','engins','chantiers','receptionsPage'] },
-  { id:'coordinateur', name:'Amine',                role:'Coordinateur',   init:'A',  avatarClass:'avatar-coord',   code:'COORD01',   pages:['dashboard','engins','chantiers','receptionsPage','interventions','stock','carburant','coordination','rapports'] },
-  { id:'magasinier',   name:'Magasinier',           role:'Magasinier',     init:'MG', avatarClass:'avatar-mag',     code:'STOCK25',   pages:['stock'] },
+  { id:'master',       name:'Rami Mohamed Amine', role:'Master Admin',   init:'MA', avatarClass:'avatar-master',  code:'ADMIN2025', pages:['dashboard','engins','chantiers','receptionsPage','interventions','stock','carburant','coordination','rapports','adminUsers','historique'] },
+  { id:'chef_atelier', name:'Chef Atelier',        role:"Chef d'Atelier", init:'CA', avatarClass:'avatar-atelier', code:'ATELIER1',  pages:['interventions','carburant','historique'] },
+  { id:'chef_parc',    name:'Chef de Parc',         role:'Chef de Parc',   init:'CP', avatarClass:'avatar-parc',    code:'PARC2025',  pages:['dashboard','engins','chantiers','receptionsPage','historique'] },
+  { id:'coordinateur', name:'Amine',                role:'Coordinateur',   init:'A',  avatarClass:'avatar-coord',   code:'COORD01',   pages:['dashboard','engins','chantiers','receptionsPage','interventions','stock','carburant','coordination','rapports','historique'] },
+  { id:'magasinier',   name:'Magasinier',           role:'Magasinier',     init:'MG', avatarClass:'avatar-mag',     code:'STOCK25',   pages:['stock','historique'] },
 ];
 
 function getUsers() {
@@ -2112,6 +2218,9 @@ function applyAccessControl(user) {
 
   // Admin nav — master only
   document.getElementById('navAdminUsers').style.display = user.id === 'master' ? '' : 'none';
+  // Historique — all roles
+  const navH = document.getElementById('navHistorique');
+  if (navH) navH.style.display = user.pages.includes('historique') ? '' : 'none';
 
   // Export buttons — master + coordinateur only
   const topActions = document.querySelector('.topbar-actions');
@@ -2163,7 +2272,10 @@ function showPage(id) {
     if (n.getAttribute('onclick')?.includes(id)) n.classList.add('active');
   });
   if (id === 'engins') renderEngins('');
+  if (id === 'interventions') renderInterventions();
+  if (id === 'stock') { renderStock(); }
   if (id === 'adminUsers') renderAdminUsers();
+  if (id === 'historique') renderHistorique('');
   notifPanel.classList.remove('open');
 }
 
@@ -2351,22 +2463,6 @@ function regenerateAllCodes() {
   showToast('↺ Tous les codes régénérés avec succès');
 }
 
-// ═══ DATA ═══
-const engins = [
-  { id:'ENG-001', name:'Niveleuse G140B', type:'Niveleuse', heures:'5 120 h', chantier:'CH-S2', statut:'dispo' },
-  { id:'ENG-003', name:'Pelle 320D', type:'Pelle hydraulique', heures:'4 230 h', chantier:'CH-N3', statut:'maintenance' },
-  { id:'ENG-005', name:'Niveleuse 140K', type:'Niveleuse', heures:'4 820 h', chantier:'Base', statut:'dispo' },
-  { id:'ENG-007', name:'Bulldozer D6T', type:'Bulldozer', heures:'6 504 h', chantier:'CH-N3', statut:'panne' },
-  { id:'ENG-009', name:'Chargeuse 938H', type:'Chargeuse', heures:'3 870 h', chantier:'CH-S2', statut:'dispo' },
-  { id:'ENG-011', name:'Chargeuse 938K', type:'Chargeuse', heures:'3 410 h', chantier:'Base', statut:'maintenance' },
-  { id:'ENG-012', name:'Pelle 320D', type:'Pelle hydraulique', heures:'5 340 h', chantier:'CH-A1', statut:'panne' },
-  { id:'ENG-015', name:'Compacteur CB10', type:'Compacteur', heures:'2 910 h', chantier:'CH-N3', statut:'dispo' },
-  { id:'ENG-017', name:'Grue LTM1060', type:'Grue mobile', heures:'1 890 h', chantier:'CH-A1', statut:'dispo' },
-  { id:'ENG-019', name:'Compacteur 430E', type:'Compacteur', heures:'2 140 h', chantier:'Base', statut:'panne' },
-  { id:'ENG-021', name:'Tractopelle 420F', type:'Tractopelle', heures:'2 650 h', chantier:'CH-K1', statut:'dispo' },
-  { id:'ENG-024', name:'Dumper 745C', type:'Tombereau', heures:'3 200 h', chantier:'CH-K1', statut:'maintenance' },
-];
-
 // ═══ NAVIGATION ═══
 const pageTitles = {
   dashboard:      ['Dashboard Coordinateur',  'gmao / dashboard'],
@@ -2379,6 +2475,7 @@ const pageTitles = {
   coordination:   ['Dashboard Coordinateur',  'gmao / coordination'],
   rapports:       ['Rapports & Exports',       'gmao / rapports'],
   adminUsers:     ['Gestion Utilisateurs',     'gmao / admin / utilisateurs'],
+  historique:     ['Historique Global',          'gmao / historique'],
 };
 
 // ═══ ENGINS GRID ═══
@@ -2419,92 +2516,529 @@ function filterSection(section, el) {
   showToast('Filtrage : ' + el.textContent.trim());
 }
 
-// ═══ SAVE ACTIONS ═══
-function saveEngin() { closeModal('modalEngin'); showToast('✓ Engin enregistré avec succès'); }
-function saveIntervention() { closeModal('modalIntervention'); showToast('✓ Ordre de travail INT-049 créé'); }
-function savePiece() { closeModal('modalPiece'); showToast('✓ Entrée stock enregistrée'); }
-function closeSortie() { closeModal('modalSortieStock'); showToast('✓ Sortie stock validée'); }
-function validTransfert(btn) {
-  btn.textContent = '✓ Validé'; btn.className = 'btn btn-success btn-sm';
-  btn.style.opacity = '.6'; btn.disabled = true;
-  showToast('✓ Transfert validé par le Coordinateur');
+// ═══════════════════════════════════════════════
+// HISTORIQUE GLOBAL — SYSTÈME COMPLET
+// ═══════════════════════════════════════════════
+
+function getHistory() {
+  return JSON.parse(localStorage.getItem('gmao_history') || '[]');
 }
-function viewChantier(id) { showToast('Chantier ' + id + ' — Détail en cours de chargement...'); }
+
+function addHistory(entry) {
+  const h = getHistory();
+  h.unshift({
+    id: 'H' + Date.now(),
+    date: new Date().toLocaleString('fr-FR'),
+    user: currentUser ? currentUser.name : '—',
+    role: currentUser ? currentUser.role : '—',
+    module: entry.module || '—',
+    action: entry.action || '—',
+    cible: entry.cible || '—',
+    avant: entry.avant || '—',
+    apres: entry.apres || '—',
+    details: entry.details || ''
+  });
+  if (h.length > 500) h.pop();
+  localStorage.setItem('gmao_history', JSON.stringify(h));
+}
+
+// ═══ DONNÉES EDITABLES EN localStorage ═══
+function getEngins() {
+  const stored = localStorage.getItem('gmao_engins');
+  return stored ? JSON.parse(stored) : [
+    { id:'ENG-001', name:'Niveleuse G140B',   type:'Niveleuse',        heures:'5 120 h', chantier:'CH-S2', statut:'dispo',       chassis:'NIV-001-2021', serie:'SN-2021-001', annee:'2021' },
+    { id:'ENG-003', name:'Pelle 320D',        type:'Pelle hydraulique', heures:'4 230 h', chantier:'CH-N3', statut:'maintenance', chassis:'CAT-320-2020', serie:'SN-2020-003', annee:'2020' },
+    { id:'ENG-005', name:'Niveleuse 140K',    type:'Niveleuse',        heures:'4 820 h', chantier:'Base',  statut:'dispo',       chassis:'NIV-005-2022', serie:'SN-2022-005', annee:'2022' },
+    { id:'ENG-007', name:'Bulldozer D6T',     type:'Bulldozer',        heures:'6 504 h', chantier:'CH-N3', statut:'panne',       chassis:'CAT-D6T-2019', serie:'SN-2019-007', annee:'2019' },
+    { id:'ENG-009', name:'Chargeuse 938H',    type:'Chargeuse',        heures:'3 870 h', chantier:'CH-S2', statut:'dispo',       chassis:'CAT-938-2021', serie:'SN-2021-009', annee:'2021' },
+    { id:'ENG-011', name:'Chargeuse 938K',    type:'Chargeuse',        heures:'3 410 h', chantier:'Base',  statut:'maintenance', chassis:'CAT-938K-2022', serie:'SN-2022-011', annee:'2022' },
+    { id:'ENG-012', name:'Pelle 320D',        type:'Pelle hydraulique', heures:'5 340 h', chantier:'CH-A1', statut:'panne',       chassis:'CAT-320-2019', serie:'SN-2019-012', annee:'2019' },
+    { id:'ENG-015', name:'Compacteur CB10',   type:'Compacteur',       heures:'2 910 h', chantier:'CH-N3', statut:'dispo',       chassis:'CB10-2022',    serie:'SN-2022-015', annee:'2022' },
+    { id:'ENG-017', name:'Grue LTM1060',      type:'Grue mobile',      heures:'1 890 h', chantier:'CH-A1', statut:'dispo',       chassis:'LTM-2023',     serie:'SN-2023-017', annee:'2023' },
+    { id:'ENG-019', name:'Compacteur 430E',   type:'Compacteur',       heures:'2 140 h', chantier:'Base',  statut:'panne',       chassis:'430E-2021',    serie:'SN-2021-019', annee:'2021' },
+    { id:'ENG-021', name:'Tractopelle 420F',  type:'Tractopelle',      heures:'2 650 h', chantier:'CH-K1', statut:'dispo',       chassis:'420F-2022',    serie:'SN-2022-021', annee:'2022' },
+    { id:'ENG-024', name:'Dumper 745C',       type:'Tombereau',        heures:'3 200 h', chantier:'CH-K1', statut:'maintenance', chassis:'745C-2020',    serie:'SN-2020-024', annee:'2020' },
+  ];
+}
+function saveEngins(list) { localStorage.setItem('gmao_engins', JSON.stringify(list)); }
+
+function getInterventions() {
+  const stored = localStorage.getItem('gmao_interventions');
+  return stored ? JSON.parse(stored) : [
+    { id:'INT-047', engin:'ENG-012 — Pelle 320D',    panne:'Circuit hydraulique',  section:'Mécanique',   tech:'Youssef', date:'14/01/2025', priorite:'Urgent', statut:'En cours',  pieces:'Tuyau hydraulique, Joint distributeur' },
+    { id:'INT-048', engin:'ENG-007 — Bulldozer D6T', panne:'Culasse fissurée',     section:'Mécanique',   tech:'Hassan',  date:'13/01/2025', priorite:'Urgent', statut:'Bloquée',   pieces:'Joint de culasse D6T' },
+    { id:'INT-045', engin:'ENG-003 — Pelle 320D',    panne:'Soudage bras',         section:'Soudage',     tech:'Karim',   date:'12/01/2025', priorite:'Normal', statut:'En cours',  pieces:'Électrodes, Fils de soudure' },
+    { id:'INT-044', engin:'ENG-019 — Compacteur',    panne:'Révision générale',    section:'Mécanique',   tech:'Amine',   date:'12/01/2025', priorite:'Normal', statut:'En cours',  pieces:'Filtres, Huile moteur' },
+    { id:'INT-043', engin:'ENG-011 — Chargeuse',     panne:'Remplacement pneus',   section:'Pneumatique', tech:'Omar',    date:'11/01/2025', priorite:'Faible', statut:'Terminée',  pieces:'4 pneus 23.5R25' },
+  ];
+}
+function saveInterventions(list) { localStorage.setItem('gmao_interventions', JSON.stringify(list)); }
+
+function getStockItems() {
+  const stored = localStorage.getItem('gmao_stock');
+  return stored ? JSON.parse(stored) : [
+    { ref:'FH-001', nom:'Filtre à huile moteur',      cat:'Filtration',  qte:0,  seuil:5,  unite:'Pcs',    prix:85,  fourn:'Autoparts Casablanca' },
+    { ref:'JC-003', nom:'Joint de culasse D6T',       cat:'Joints',      qte:2,  seuil:5,  unite:'Pcs',    prix:320, fourn:'CAT Maroc' },
+    { ref:'HU-005', nom:'Huile moteur 15W40',         cat:'Lubrifiants', qte:48, seuil:20, unite:'Litres', prix:28,  fourn:'Afriquia Lubricants' },
+    { ref:'PC-012', nom:'Plaquettes de frein',        cat:'Freinage',    qte:12, seuil:8,  unite:'Jeux',   prix:240, fourn:'Frein-Auto Maroc' },
+    { ref:'FC-007', nom:'Filtre carburant',           cat:'Filtration',  qte:6,  seuil:8,  unite:'Pcs',    prix:95,  fourn:'Autoparts Casablanca' },
+    { ref:'RL-002', nom:'Roulement à billes 6205',   cat:'Roulements',  qte:24, seuil:10, unite:'Pcs',    prix:65,  fourn:'SKF Maroc' },
+    { ref:'TS-009', nom:'Tuyau souple hydraulique',  cat:'Hydraulique', qte:8,  seuil:5,  unite:'Mètres', prix:185, fourn:'Parker Maroc' },
+  ];
+}
+function saveStock(list) { localStorage.setItem('gmao_stock', JSON.stringify(list)); }
+
+// ═══ ENGINS GRID (dynamic) ═══
+function renderEngins(filter) {
+  const grid = document.getElementById('enginGrid');
+  const allEngins = getEngins();
+  const list = filter ? allEngins.filter(e => e.statut === filter) : allEngins;
+  const canEdit = currentUser && ['master','chef_parc','coordinateur'].includes(currentUser.id);
+  grid.innerHTML = list.map(e => `
+    <div class="engin-card ${e.statut}">
+      <div class="engin-top">
+        <span class="engin-id">${e.id}</span>
+        <span class="badge ${e.statut==='dispo'?'badge-ok':e.statut==='panne'?'badge-danger':'badge-warn'}">
+          ${e.statut==='dispo'?'Disponible':e.statut==='panne'?'En panne':'Maintenance'}
+        </span>
+      </div>
+      <div class="engin-name">${e.name}</div>
+      <div class="engin-meta">${e.type} · ${e.annee||'—'}</div>
+      <div class="engin-meta" style="margin-top:4px">⏱ ${e.heures} &nbsp;|&nbsp; 📍 ${e.chantier}</div>
+      ${canEdit ? `<div style="display:flex;gap:5px;margin-top:8px">
+        <button class="btn btn-ghost btn-sm" style="flex:1;font-size:10px" onclick="openEditEngin('${e.id}')">✎ Modifier</button>
+        <select style="flex:1;font-size:10px;padding:3px 4px;background:var(--surface3);border:1px solid var(--border2);color:var(--text);border-radius:3px;outline:none" onchange="changeEnginStatut('${e.id}',this.value)">
+          <option value="dispo" ${e.statut==='dispo'?'selected':''}>Disponible</option>
+          <option value="panne" ${e.statut==='panne'?'selected':''}>En panne</option>
+          <option value="maintenance" ${e.statut==='maintenance'?'selected':''}>Maintenance</option>
+        </select>
+      </div>` : ''}
+    </div>`).join('');
+}
+function filterEngins(val) { renderEngins(val); }
+
+// ═══ EDIT ENGIN ═══
+let editingEnginId = null;
+function openEditEngin(id) {
+  const eng = getEngins().find(e => e.id === id);
+  if (!eng) return;
+  editingEnginId = id;
+  document.getElementById('eeId').value = eng.id;
+  document.getElementById('eeName').value = eng.name;
+  document.getElementById('eeType').value = eng.type;
+  document.getElementById('eeChassis').value = eng.chassis||'';
+  document.getElementById('eeSerie').value = eng.serie||'';
+  document.getElementById('eeAnnee').value = eng.annee||'';
+  document.getElementById('eeHeures').value = eng.heures||'';
+  document.getElementById('eeChantier').value = eng.chantier||'';
+  document.getElementById('eeStatut').value = eng.statut||'dispo';
+  openModal('modalEditEngin');
+}
+function saveEditEngin() {
+  const engs = getEngins();
+  const idx = engs.findIndex(e => e.id === editingEnginId);
+  if (idx < 0) return;
+  const old = {...engs[idx]};
+  const updated = {
+    ...old,
+    name:    document.getElementById('eeName').value.trim(),
+    type:    document.getElementById('eeType').value.trim(),
+    chassis: document.getElementById('eeChassis').value.trim(),
+    serie:   document.getElementById('eeSerie').value.trim(),
+    annee:   document.getElementById('eeAnnee').value.trim(),
+    heures:  document.getElementById('eeHeures').value.trim(),
+    chantier:document.getElementById('eeChantier').value.trim(),
+    statut:  document.getElementById('eeStatut').value,
+  };
+  const changes = Object.keys(updated).filter(k => updated[k] !== old[k]).map(k => k+': "'+old[k]+'" → "'+updated[k]+'"').join(', ');
+  engs[idx] = updated;
+  saveEngins(engs);
+  if (changes) addHistory({ module:'Parc Engins', action:'Modification fiche engin', cible:old.id+' — '+old.name, avant:JSON.stringify(old), apres:JSON.stringify(updated), details:changes });
+  closeModal('modalEditEngin');
+  renderEngins('');
+  showToast('✓ Fiche engin '+updated.id+' mise à jour');
+}
+function changeEnginStatut(id, newStatut) {
+  const engs = getEngins();
+  const eng = engs.find(e => e.id === id);
+  if (!eng) return;
+  const old = eng.statut;
+  if (old === newStatut) return;
+  eng.statut = newStatut;
+  saveEngins(engs);
+  addHistory({ module:'Parc Engins', action:'Changement statut', cible:eng.id+' — '+eng.name, avant:old, apres:newStatut });
+  renderEngins('');
+  showToast('✓ Statut '+eng.id+' → '+newStatut);
+}
+
+// ═══ INTERVENTIONS (dynamic) ═══
+function renderInterventions() {
+  const list = getInterventions();
+  const canEdit = currentUser && ['master','chef_atelier','coordinateur'].includes(currentUser.id);
+  const tbody = document.getElementById('interventionTable');
+  if (!tbody) return;
+  tbody.innerHTML = list.map(i => `<tr>
+    <td class="mono">${i.id}</td>
+    <td>${i.engin}</td>
+    <td>${i.panne}</td>
+    <td><span class="chip ${i.section==='Mécanique'?'mec':i.section==='Soudage'?'sou':i.section==='Peinture'?'pei':i.section==='Pneumatique'?'pneu':i.section==='Tour-Fraisage'?'tour':'sab'}" style="cursor:default">${i.section}</span></td>
+    <td>${i.tech}</td>
+    <td class="mono">${i.date}</td>
+    <td><span class="badge ${i.priorite==='Urgent'?'badge-danger':i.priorite==='Normal'?'badge-blue':'badge-gray'}">${i.priorite}</span></td>
+    <td>
+      ${canEdit ? `<select style="font-size:10px;padding:3px 6px;background:var(--surface3);border:1px solid var(--border2);color:var(--text);border-radius:3px;outline:none" onchange="changeOTStatut('${i.id}',this.value)">
+        <option ${i.statut==='En cours'?'selected':''}>En cours</option>
+        <option ${i.statut==='Bloquée'?'selected':''}>Bloquée</option>
+        <option ${i.statut==='Terminée'?'selected':''}>Terminée</option>
+        <option ${i.statut==='En attente pièce'?'selected':''}>En attente pièce</option>
+      </select>` : `<span class="badge ${i.statut==='Terminée'?'badge-ok':i.statut==='Bloquée'?'badge-danger':'badge-warn'}">${i.statut}</span>`}
+    </td>
+    <td>${canEdit ? `<button class="btn btn-ghost btn-sm" onclick="openEditOT('${i.id}')">✎ Fiche</button>` : `<button class="btn btn-ghost btn-sm" onclick="openEditOT('${i.id}')">Voir</button>`}</td>
+  </tr>`).join('');
+}
+function changeOTStatut(id, newStatut) {
+  const list = getInterventions();
+  const ot = list.find(i => i.id === id);
+  if (!ot) return;
+  const old = ot.statut;
+  if (old === newStatut) return;
+  ot.statut = newStatut;
+  saveInterventions(list);
+  addHistory({ module:'Atelier — Interventions', action:'Changement statut OT', cible:ot.id+' — '+ot.engin, avant:old, apres:newStatut });
+  showToast('✓ OT '+id+' → '+newStatut);
+}
+let editingOTId = null;
+function openEditOT(id) {
+  const list = getInterventions();
+  const ot = list.find(i => i.id === id);
+  if (!ot) return;
+  editingOTId = id;
+  const canEdit = currentUser && ['master','chef_atelier','coordinateur'].includes(currentUser.id);
+  document.getElementById('otId').textContent = ot.id;
+  document.getElementById('otEngin').textContent = ot.engin;
+  document.getElementById('otSection').textContent = ot.section;
+  document.getElementById('otTech').textContent = ot.tech;
+  document.getElementById('otDate').textContent = ot.date;
+  document.getElementById('otPanne').textContent = ot.panne;
+  document.getElementById('otPieces').textContent = ot.pieces||'—';
+  const st = document.getElementById('otStatutEdit');
+  st.value = ot.statut;
+  st.disabled = !canEdit;
+  const saveBtn = document.getElementById('otSaveBtn');
+  if (saveBtn) saveBtn.style.display = canEdit ? '' : 'none';
+  openModal('modalFicheIntervention');
+}
+function saveOTEdit() {
+  const list = getInterventions();
+  const ot = list.find(i => i.id === editingOTId);
+  if (!ot) return;
+  const newStatut = document.getElementById('otStatutEdit').value;
+  const newObs = document.getElementById('otObsEdit').value.trim();
+  const old = ot.statut;
+  if (newStatut !== old || newObs) {
+    ot.statut = newStatut;
+    if (newObs) ot.observations = (ot.observations||'') + '\n['+new Date().toLocaleString('fr-FR')+' — '+currentUser.name+'] '+newObs;
+    saveInterventions(list);
+    addHistory({ module:'Atelier — Interventions', action:'Mise à jour OT', cible:ot.id+' — '+ot.engin, avant:'Statut: '+old, apres:'Statut: '+newStatut+(newObs?' | Obs: '+newObs:''), details:ot.observations||'' });
+  }
+  closeModal('modalFicheIntervention');
+  renderInterventions();
+  showToast('✓ OT '+editingOTId+' mis à jour');
+}
+
+// ═══ STOCK (dynamic) ═══
+function renderStock() {
+  const list = getStockItems();
+  const canEdit = currentUser && ['master','magasinier','coordinateur'].includes(currentUser.id);
+  const tbody = document.getElementById('stockTable');
+  if (!tbody) return;
+  tbody.innerHTML = list.map(s => {
+    const st = s.qte <= 0 ? 'Rupture' : s.qte <= s.seuil ? (s.qte <= s.seuil*0.5 ? 'Critique' : 'Bas') : 'OK';
+    const stClass = st==='Rupture'||st==='Critique' ? 'badge-danger' : st==='Bas' ? 'badge-warn' : 'badge-ok';
+    return `<tr>
+      <td class="mono">${s.ref}</td>
+      <td>${s.nom}</td>
+      <td>${s.cat}</td>
+      <td class="mono" style="color:${s.qte<=0?'var(--danger)':s.qte<=s.seuil?'var(--warn)':'var(--text)'};font-weight:${s.qte<=s.seuil?'700':'400'}">${s.qte}</td>
+      <td class="mono">${s.seuil}</td>
+      <td>${s.unite}</td>
+      <td class="mono">${s.prix} MAD</td>
+      <td>${s.fourn}</td>
+      <td><span class="badge ${stClass}">${st}</span></td>
+      ${canEdit ? `<td><button class="btn btn-ghost btn-sm" onclick="openEditStock('${s.ref}')">✎</button></td>` : '<td></td>'}
+    </tr>`;
+  }).join('');
+}
+let editingStockRef = null;
+function openEditStock(ref) {
+  const s = getStockItems().find(i => i.ref === ref);
+  if (!s) return;
+  editingStockRef = ref;
+  document.getElementById('esRef').value = s.ref;
+  document.getElementById('esNom').value = s.nom;
+  document.getElementById('esCat').value = s.cat;
+  document.getElementById('esQte').value = s.qte;
+  document.getElementById('esSeuil').value = s.seuil;
+  document.getElementById('esUnite').value = s.unite;
+  document.getElementById('esPrix').value = s.prix;
+  document.getElementById('esFourn').value = s.fourn;
+  openModal('modalEditStock');
+}
+function saveEditStock() {
+  const list = getStockItems();
+  const idx = list.findIndex(i => i.ref === editingStockRef);
+  if (idx < 0) return;
+  const old = {...list[idx]};
+  const updated = {
+    ref:   document.getElementById('esRef').value.trim(),
+    nom:   document.getElementById('esNom').value.trim(),
+    cat:   document.getElementById('esCat').value.trim(),
+    qte:   parseInt(document.getElementById('esQte').value)||0,
+    seuil: parseInt(document.getElementById('esSeuil').value)||0,
+    unite: document.getElementById('esUnite').value.trim(),
+    prix:  parseFloat(document.getElementById('esPrix').value)||0,
+    fourn: document.getElementById('esFourn').value.trim(),
+  };
+  list[idx] = updated;
+  saveStock(list);
+  const changes = Object.keys(updated).filter(k=>updated[k]!==old[k]).map(k=>k+': "'+old[k]+'" → "'+updated[k]+'"').join(', ');
+  addHistory({ module:'Stock & Magasin', action:'Modification pièce', cible:old.ref+' — '+old.nom, avant:'Qté:'+old.qte+' | Prix:'+old.prix+' MAD', apres:'Qté:'+updated.qte+' | Prix:'+updated.prix+' MAD', details:changes });
+  closeModal('modalEditStock');
+  renderStock();
+  showToast('✓ Pièce '+updated.ref+' mise à jour');
+}
+
+// ═══ ENTRÉE STOCK ═══
+function saveEntreeStock() {
+  const ref   = document.getElementById('esRefIn').value.trim().toUpperCase();
+  const nom   = document.getElementById('esNomIn').value.trim();
+  const cat   = document.getElementById('esCatIn').value;
+  const qte   = parseInt(document.getElementById('esQteIn').value)||0;
+  const seuil = parseInt(document.getElementById('esSeuilIn').value)||5;
+  const unite = document.getElementById('esUniteIn').value;
+  const prix  = parseFloat(document.getElementById('esPrixIn').value)||0;
+  const fourn = document.getElementById('esFournIn').value.trim();
+  if (!ref || !nom) { showToast('⚠ Référence et désignation requis'); return; }
+  const list = getStockItems();
+  const existing = list.find(i => i.ref === ref);
+  if (existing) {
+    const oldQte = existing.qte;
+    existing.qte += qte;
+    saveStock(list);
+    addHistory({ module:'Stock & Magasin', action:'Entrée stock', cible:ref+' — '+existing.nom, avant:'Qté: '+oldQte, apres:'Qté: '+existing.qte, details:'+'+qte+' '+unite+' | Fournisseur: '+fourn });
+    showToast('✓ Entrée stock — '+ref+' : +'+qte+' '+unite);
+  } else {
+    list.push({ ref, nom, cat, qte, seuil, unite, prix, fourn });
+    saveStock(list);
+    addHistory({ module:'Stock & Magasin', action:'Nouvelle pièce en stock', cible:ref+' — '+nom, avant:'—', apres:'Qté: '+qte+' | Prix: '+prix+' MAD', details:'Fournisseur: '+fourn });
+    showToast('✓ Nouvelle pièce créée : '+ref);
+  }
+  closeModal('modalPiece');
+  renderStock();
+}
+
+// ═══ SORTIE STOCK ═══
+function saveSortieStock() {
+  const ref  = document.getElementById('soPieceRef').value;
+  const qte  = parseInt(document.getElementById('soQte').value)||0;
+  const ot   = document.getElementById('soOT').value;
+  const motif= document.getElementById('soMotif').value.trim();
+  if (!ref || qte <= 0) { showToast('⚠ Sélectionnez une pièce et une quantité'); return; }
+  const list = getStockItems();
+  const item = list.find(i => i.ref === ref);
+  if (!item) { showToast('⚠ Pièce introuvable'); return; }
+  if (item.qte < qte) { showToast('⚠ Stock insuffisant ('+item.qte+' disponible)'); return; }
+  const oldQte = item.qte;
+  item.qte -= qte;
+  saveStock(list);
+  addHistory({ module:'Stock & Magasin', action:'Sortie stock', cible:ref+' — '+item.nom, avant:'Qté: '+oldQte, apres:'Qté: '+item.qte, details:'-'+qte+' '+item.unite+' | OT: '+ot+' | Motif: '+motif });
+  closeModal('modalSortieStock');
+  renderStock();
+  showToast('✓ Sortie stock — '+ref+' : -'+qte+' '+item.unite);
+}
+
+// ═══ SAVE ACTIONS ═══
+function saveEngin() {
+  const id = document.getElementById('newEnginId').value.trim().toUpperCase() || 'ENG-'+(Date.now()%10000);
+  const name = document.getElementById('newEnginName').value.trim();
+  if (!name) { showToast('⚠ Modèle requis'); return; }
+  const engs = getEngins();
+  const newEng = {
+    id, name,
+    type:    document.getElementById('newEnginType').value.trim(),
+    chassis: document.getElementById('newEnginChassis').value.trim(),
+    serie:   document.getElementById('newEnginSerie').value.trim(),
+    annee:   document.getElementById('newEnginAnnee').value.trim(),
+    heures:  document.getElementById('newEnginHeures').value.trim() || '0 h',
+    chantier:document.getElementById('newEnginChantier').value.trim() || 'Base',
+    statut:  document.getElementById('newEnginStatut').value || 'dispo',
+  };
+  engs.push(newEng);
+  saveEngins(engs);
+  addHistory({ module:'Parc Engins', action:'Nouvel engin créé', cible:id+' — '+name, avant:'—', apres:'Statut: '+newEng.statut+' | Heures: '+newEng.heures });
+  closeModal('modalEngin');
+  renderEngins('');
+  showToast('✓ Engin '+id+' enregistré');
+}
+function saveIntervention() {
+  const engin = document.getElementById('otNewEngin').value;
+  const panne = document.getElementById('otNewPanne').value.trim();
+  const section = document.getElementById('otNewSection').value;
+  const tech = document.getElementById('otNewTech').value;
+  const priorite = document.getElementById('otNewPriorite').value;
+  if (!panne) { showToast('⚠ Description panne requise'); return; }
+  const list = getInterventions();
+  const id = 'INT-' + (parseInt(list[0]?.id?.split('-')[1]||'050')+1);
+  const newOT = { id, engin, panne, section, tech, date:new Date().toLocaleDateString('fr-FR'), priorite, statut:'En cours', pieces:document.getElementById('otNewPieces').value.trim() };
+  list.unshift(newOT);
+  saveInterventions(list);
+  addHistory({ module:'Atelier — Interventions', action:'Nouvel OT créé', cible:id+' — '+engin, avant:'—', apres:'Section: '+section+' | Priorité: '+priorite+' | Tech: '+tech });
+  closeModal('modalIntervention');
+  renderInterventions();
+  showToast('✓ OT '+id+' créé');
+}
+function savePiece() { saveEntreeStock(); }
+function closeSortie() { saveSortieStock(); }
+function validTransfert(btn) {
+  btn.textContent='✓ Validé'; btn.className='btn btn-success btn-sm'; btn.style.opacity='.6'; btn.disabled=true;
+  addHistory({ module:'Coordination', action:'Transfert pièce validé', cible:'—', avant:'En attente', apres:'Validé', details:'Par: '+currentUser.name });
+  showToast('✓ Transfert validé');
+}
+function viewChantier(id) { showToast('Chantier '+id+' — Détail...'); }
+
+// ═══ HISTORIQUE PAGE ═══
+function renderHistorique(filter) {
+  const all = getHistory();
+  const filtered = filter ? all.filter(h =>
+    h.module.toLowerCase().includes(filter.toLowerCase()) ||
+    h.action.toLowerCase().includes(filter.toLowerCase()) ||
+    h.cible.toLowerCase().includes(filter.toLowerCase()) ||
+    h.user.toLowerCase().includes(filter.toLowerCase())
+  ) : all;
+
+  const tbody = document.getElementById('histTable');
+  if (!tbody) return;
+  if (!filtered.length) {
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--text3);font-family:var(--font-mono);font-size:11px">Aucun historique enregistré</td></tr>`;
+    return;
+  }
+  const modColors = {
+    'Parc Engins':'var(--accent3)', 'Atelier — Interventions':'var(--accent2)',
+    'Stock & Magasin':'#06b6d4', 'Coordination':'var(--warn)',
+    'Admin':'var(--danger)', 'Carburant':'var(--accent)'
+  };
+  tbody.innerHTML = filtered.map(h => `<tr>
+    <td class="mono" style="font-size:10px;white-space:nowrap">${h.date}</td>
+    <td style="font-weight:600;font-size:12px">${h.user}</td>
+    <td><span class="badge badge-gray">${h.role}</span></td>
+    <td style="color:${modColors[h.module]||'var(--text2)'};font-size:11px;font-weight:500">${h.module}</td>
+    <td style="font-size:12px">${h.action}</td>
+    <td style="font-family:var(--font-mono);font-size:10px;color:var(--accent)">${h.cible}</td>
+    <td style="font-family:var(--font-mono);font-size:10px;color:var(--danger);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${h.avant}">${h.avant}</td>
+    <td style="font-family:var(--font-mono);font-size:10px;color:var(--accent3);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${h.apres}">${h.apres}</td>
+  </tr>`).join('');
+  document.getElementById('histCount').textContent = filtered.length + ' entrée(s)';
+}
+
+function exportHistorique() {
+  const all = getHistory();
+  if (!all.length) { showToast('⚠ Aucun historique à exporter'); return; }
+  const wb = XLSX.utils.book_new();
+  const rows = [['ID','Date','Utilisateur','Rôle','Module','Action','Cible','Avant','Après','Détails']];
+  all.forEach(h => rows.push([h.id, h.date, h.user, h.role, h.module, h.action, h.cible, h.avant, h.apres, h.details||'']));
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [12,18,18,14,22,26,26,22,22,30].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb, ws, 'Historique Global');
+  XLSX.writeFile(wb, 'GMAO_Historique_'+new Date().toISOString().slice(0,10)+'.xlsx');
+  showToast('✓ Historique exporté ('+all.length+' entrées)');
+}
+
+function clearHistorique() {
+  if (!confirm('Effacer tout l\'historique ? Cette action est irréversible.')) return;
+  localStorage.removeItem('gmao_history');
+  renderHistorique('');
+  showToast('Historique effacé');
+}
 
 // ═══ RAPPORT ═══
 function generateRapport() {
   showToast('⬡ Génération du rapport en cours...');
-  setTimeout(() => {
-    document.getElementById('rapportPreview').style.display = 'block';
-    showToast('✓ Rapport généré avec succès');
-  }, 800);
+  setTimeout(() => { document.getElementById('rapportPreview').style.display='block'; showToast('✓ Rapport généré'); }, 800);
 }
 
 // ═══ EXPORTS XLSX ═══
 function exportXLSX() {
   const wb = XLSX.utils.book_new();
   const date = new Date().toISOString().slice(0,10);
-  const enginRows = [['N° Engin','Modèle','Type','Chantier','Heures','Statut']]
-    .concat(engins.map(e => [e.id, e.name, e.type, e.chantier, e.heures,
-      e.statut==='dispo'?'Disponible':e.statut==='panne'?'En panne':'Maintenance']));
-  const wsEngins = XLSX.utils.aoa_to_sheet(enginRows);
-  wsEngins['!cols'] = [14,22,18,14,12,14].map(w=>({wch:w}));
-  XLSX.utils.book_append_sheet(wb, wsEngins, 'Parc Engins');
-  const wsOT = XLSX.utils.aoa_to_sheet([
-    ['N° OT','Engin','Panne','Section','Technicien','Date','Priorité','Statut'],
-    ['INT-047','ENG-012 Pelle 320D','Circuit hydraulique','Mécanique','Youssef','14/01/2025','Urgent','En cours'],
-    ['INT-048','ENG-007 Bulldozer D6T','Culasse fissurée','Mécanique','Hassan','13/01/2025','Urgent','Bloquée'],
-    ['INT-045','ENG-003 Pelle 320D','Soudage bras','Soudage','Karim','12/01/2025','Normal','En cours'],
-  ]);
-  wsOT['!cols'] = [10,22,22,14,12,12,10,12].map(w=>({wch:w}));
-  XLSX.utils.book_append_sheet(wb, wsOT, 'Interventions');
-  const wsStock = XLSX.utils.aoa_to_sheet([
-    ['Référence','Désignation','Catégorie','Qté','Seuil Min.','Unité','Prix Unit. (MAD)','Fournisseur','Statut'],
-    ['FH-001','Filtre à huile moteur','Filtration',0,5,'Pcs',85,'Autoparts Casablanca','Rupture'],
-    ['JC-003','Joint de culasse D6T','Joints',2,5,'Pcs',320,'CAT Maroc','Critique'],
-    ['HU-005','Huile moteur 15W40','Lubrifiants',48,20,'Litres',28,'Afriquia Lubricants','OK'],
-  ]);
-  wsStock['!cols'] = [10,28,14,6,10,8,18,22,10].map(w=>({wch:w}));
-  XLSX.utils.book_append_sheet(wb, wsStock, 'Stock Pièces');
-  const wsCarb = XLSX.utils.aoa_to_sheet([
-    ['Date','N° Engin','Chauffeur','Litres','KM / Heures','Chantier','Validé'],
-    ['14/01/2025','ENG-007','Ahmed',120,'4 820 h','CH-N3','Oui'],
-    ['14/01/2025','ENG-015','Mustapha',85,'3 210 h','CH-N3','Oui'],
-  ]);
-  wsCarb['!cols'] = [14,12,14,8,12,10,12].map(w=>({wch:w}));
-  XLSX.utils.book_append_sheet(wb, wsCarb, 'Carburant');
-  XLSX.writeFile(wb, 'GMAO_Rapport_' + date + '.xlsx');
-  showToast('✓ Export XLSX téléchargé');
+  const allEngins = getEngins();
+  const wsE = XLSX.utils.aoa_to_sheet([['N° Engin','Modèle','Type','Châssis','Série','Année','Heures','Chantier','Statut']]
+    .concat(allEngins.map(e=>[e.id,e.name,e.type,e.chassis||'',e.serie||'',e.annee||'',e.heures,e.chantier,e.statut==='dispo'?'Disponible':e.statut==='panne'?'En panne':'Maintenance'])));
+  wsE['!cols']=[12,20,16,16,14,8,10,12,12].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb,wsE,'Parc Engins');
+  const allOT = getInterventions();
+  const wsOT = XLSX.utils.aoa_to_sheet([['N° OT','Engin','Panne','Section','Technicien','Date','Priorité','Statut','Pièces']]
+    .concat(allOT.map(i=>[i.id,i.engin,i.panne,i.section,i.tech,i.date,i.priorite,i.statut,i.pieces||''])));
+  wsOT['!cols']=[10,22,22,14,12,12,10,14,24].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb,wsOT,'Interventions');
+  const allStock = getStockItems();
+  const wsSt = XLSX.utils.aoa_to_sheet([['Réf.','Désignation','Catégorie','Qté','Seuil','Unité','Prix MAD','Fournisseur']]
+    .concat(allStock.map(s=>[s.ref,s.nom,s.cat,s.qte,s.seuil,s.unite,s.prix,s.fourn])));
+  wsSt['!cols']=[10,26,14,6,8,8,12,22].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb,wsSt,'Stock Pièces');
+  // History sheet
+  const allH = getHistory();
+  const wsH = XLSX.utils.aoa_to_sheet([['Date','Utilisateur','Rôle','Module','Action','Cible','Avant','Après']]
+    .concat(allH.map(h=>[h.date,h.user,h.role,h.module,h.action,h.cible,h.avant,h.apres])));
+  wsH['!cols']=[18,16,14,22,26,26,22,22].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb,wsH,'Historique');
+  XLSX.writeFile(wb,'GMAO_Export_'+date+'.xlsx');
+  showToast('✓ Export XLSX — 4 feuilles téléchargées');
 }
 
 function exportPDF() {
-  const win = window.open('', '_blank');
+  const allEngins = getEngins();
+  const win = window.open('','_blank');
   win.document.write(`<html><head><title>Rapport GMAO</title>
   <style>body{font-family:Arial,sans-serif;padding:30px;color:#111;font-size:13px}
-  h1{font-size:22px;border-bottom:2px solid #f59e0b;padding-bottom:8px;margin-bottom:20px}
-  h2{font-size:15px;margin-top:24px;color:#374151}
-  table{width:100%;border-collapse:collapse;margin-top:10px}
-  th{background:#f3f4f6;padding:8px;text-align:left;font-size:11px;text-transform:uppercase}
-  td{padding:8px;border-bottom:1px solid #e5e7eb;font-size:12px}
-  .ok{background:#d1fae5;color:#065f46;padding:2px 8px;border-radius:2px;font-size:10px}
-  .warn{background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:2px;font-size:10px}
-  .danger{background:#fee2e2;color:#991b1b;padding:2px 8px;border-radius:2px;font-size:10px}
+  h1{font-size:22px;border-bottom:2px solid #f59e0b;padding-bottom:8px;margin-bottom:16px}
+  h2{font-size:14px;margin-top:20px;color:#374151;border-left:3px solid #f59e0b;padding-left:8px}
+  table{width:100%;border-collapse:collapse;margin-top:8px}
+  th{background:#f3f4f6;padding:7px;text-align:left;font-size:10px;text-transform:uppercase}
+  td{padding:7px;border-bottom:1px solid #e5e7eb;font-size:11px}
+  .ok{background:#d1fae5;color:#065f46;padding:1px 6px;border-radius:2px;font-size:9px}
+  .warn{background:#fef3c7;color:#92400e;padding:1px 6px;border-radius:2px;font-size:9px}
+  .bad{background:#fee2e2;color:#991b1b;padding:1px 6px;border-radius:2px;font-size:9px}
+  .kpi{display:inline-block;border:1px solid #e5e7eb;padding:10px 16px;margin-right:10px;border-radius:4px;margin-bottom:10px}
+  .kv{font-size:26px;font-weight:700;color:#f59e0b}.kl{font-size:9px;color:#6b7280;text-transform:uppercase}
   </style></head><body>
   <h1>⬡ Rapport GMAO — Parc & Atelier</h1>
-  <p style="color:#6b7280;font-size:11px">Généré le ${new Date().toLocaleDateString('fr-FR')} — Utilisateur : ${currentUser?.name||'—'}</p>
+  <p style="color:#6b7280;font-size:10px">Généré le ${new Date().toLocaleDateString('fr-FR')} ${new Date().toLocaleTimeString('fr-FR')} — Par : ${currentUser?.name||'—'} (${currentUser?.role||'—'})</p>
+  <div style="margin:14px 0">
+    <div class="kpi"><div class="kl">Total Flotte</div><div class="kv">${allEngins.length}</div></div>
+    <div class="kpi"><div class="kl">Disponibles</div><div class="kv" style="color:#10b981">${allEngins.filter(e=>e.statut==='dispo').length}</div></div>
+    <div class="kpi"><div class="kl">En Panne</div><div class="kv" style="color:#ef4444">${allEngins.filter(e=>e.statut==='panne').length}</div></div>
+    <div class="kpi"><div class="kl">Maintenance</div><div class="kv" style="color:#f97316">${allEngins.filter(e=>e.statut==='maintenance').length}</div></div>
+  </div>
   <h2>État du Parc</h2>
-  <table><tr><th>N° Engin</th><th>Modèle</th><th>Chantier</th><th>Heures</th><th>Statut</th></tr>
-  ${engins.map(e=>`<tr><td>${e.id}</td><td>${e.name}</td><td>${e.chantier}</td><td>${e.heures}</td>
-  <td><span class="${e.statut==='dispo'?'ok':e.statut==='panne'?'danger':'warn'}">${e.statut==='dispo'?'Disponible':e.statut==='panne'?'En panne':'Maintenance'}</span></td></tr>`).join('')}
+  <table><tr><th>N° Engin</th><th>Modèle</th><th>Type</th><th>Heures</th><th>Chantier</th><th>Statut</th></tr>
+  ${allEngins.map(e=>`<tr><td>${e.id}</td><td>${e.name}</td><td>${e.type}</td><td>${e.heures}</td><td>${e.chantier}</td>
+  <td><span class="${e.statut==='dispo'?'ok':e.statut==='panne'?'bad':'warn'}">${e.statut==='dispo'?'Disponible':e.statut==='panne'?'En panne':'Maintenance'}</span></td></tr>`).join('')}
   </table>
-  <p style="margin-top:40px;font-size:10px;color:#9ca3af;border-top:1px solid #e5e7eb;padding-top:10px">
-  GMAO Parc & Atelier — Document confidentiel — Precision Logistics</p>
+  <h2>Interventions en cours</h2>
+  <table><tr><th>N° OT</th><th>Engin</th><th>Panne</th><th>Section</th><th>Technicien</th><th>Priorité</th><th>Statut</th></tr>
+  ${getInterventions().filter(i=>i.statut!=='Terminée').map(i=>`<tr><td>${i.id}</td><td>${i.engin}</td><td>${i.panne}</td><td>${i.section}</td><td>${i.tech}</td>
+  <td><span class="${i.priorite==='Urgent'?'bad':'ok'}">${i.priorite}</span></td><td>${i.statut}</td></tr>`).join('')}
+  </table>
+  <p style="margin-top:36px;font-size:9px;color:#9ca3af;border-top:1px solid #e5e7eb;padding-top:8px">
+  GMAO Parc & Atelier — Document confidentiel — Precision Logistics — ${new Date().getFullYear()}</p>
   </body></html>`);
   win.document.close(); win.print();
   showToast('✓ PDF généré');
 }
 
 function filterStock(q) {
+  renderStock();
+  if (!q) return;
   document.querySelectorAll('#stockTable tr').forEach(r => {
     r.style.display = r.textContent.toLowerCase().includes(q.toLowerCase()) ? '' : 'none';
   });
@@ -2520,16 +3054,17 @@ function showToast(msg) {
     color:'#e2e8f0', padding:'10px 16px', borderRadius:'4px',
     fontSize:'12px', fontFamily:"'IBM Plex Mono',monospace",
     zIndex:'9999', boxShadow:'0 8px 24px rgba(0,0,0,.4)',
-    borderLeft:'3px solid #f59e0b', maxWidth:'320px'
+    borderLeft:'3px solid #f59e0b', maxWidth:'340px'
   });
   document.body.appendChild(t);
   setTimeout(() => t.remove(), 3500);
 }
 
-// ═══ INIT — version check to refresh users if needed ═══
-const APP_VERSION = 'v2.3';
+// ═══ INIT ═══
+const APP_VERSION = 'v3.0';
 if (localStorage.getItem('gmao_version') !== APP_VERSION) {
-  localStorage.removeItem('gmao_users');
+  // Reset complet — nouvelle version avec historique + édition complète
+  ['gmao_users','gmao_engins','gmao_interventions','gmao_stock','gmao_history','gmao_log'].forEach(k => localStorage.removeItem(k));
   localStorage.setItem('gmao_version', APP_VERSION);
 }
 document.getElementById('loginCode').focus();
