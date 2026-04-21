@@ -225,7 +225,7 @@
   .code-hidden:hover { filter: blur(0); }
 
   /* ── SHELL ── */
-  .shell { display: flex; height: 100vh; position: relative; z-index: 1; }
+  .shell { display: flex; height: 100vh; position: relative; z-index: 1; overflow: hidden; }
 
   /* ── SIDEBAR ── */
   .sidebar {
@@ -233,8 +233,18 @@
     background: var(--surface);
     border-right: 1px solid var(--border);
     display: flex; flex-direction: column;
+    height: 100vh;
     overflow: hidden;
+    position: sticky; top: 0;
   }
+  .sidebar-nav {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-bottom: 4px;
+  }
+  .sidebar-nav::-webkit-scrollbar { width: 3px; }
+  .sidebar-nav::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
   .sidebar-brand {
     padding: 18px 16px 14px;
     border-bottom: 1px solid var(--border);
@@ -337,7 +347,7 @@
   }
 
   /* ── MAIN ── */
-  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
 
   .topbar {
     height: 48px; min-height: 48px;
@@ -345,6 +355,8 @@
     border-bottom: 1px solid var(--border);
     display: flex; align-items: center; gap: 12px;
     padding: 0 20px;
+    flex-shrink: 0;
+    position: sticky; top: 0; z-index: 100;
   }
   .topbar-title {
     font-family: var(--font-display);
@@ -382,16 +394,23 @@
   .content {
     flex: 1;
     overflow-y: auto;
+    overflow-x: hidden;
     padding: 20px;
-    display: flex; flex-direction: column; gap: 16px;
+    display: flex;
+    flex-direction: column;
+    height: 0;
   }
+  .content::-webkit-scrollbar { width: 5px; }
+  .content::-webkit-scrollbar-track { background: var(--surface); }
+  .content::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+  .content::-webkit-scrollbar-thumb:hover { background: var(--text3); }
 
   /* ── PAGES ── */
-  .page { display: none; }
-  .page.active { display: contents; }
+  .page { display: none; flex-direction: column; gap: 16px; padding-bottom: 24px; flex-shrink: 0; }
+  .page.active { display: flex; }
 
   /* ── STAT CARDS ── */
-  .stats-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; }
+  .stats-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; min-width: 0; }
   .stat-card {
     background: var(--surface);
     border: 1px solid var(--border);
@@ -431,22 +450,27 @@
     border: 1px solid var(--border);
     border-radius: 4px;
     overflow: hidden;
+    min-width: 0;
   }
   .panel-header {
     display: flex; align-items: center; gap: 10px;
     padding: 11px 16px;
     border-bottom: 1px solid var(--border);
     background: var(--surface2);
+    flex-wrap: wrap;
   }
   .panel-title {
     font-family: var(--font-display);
     font-size: 13px; font-weight: 700;
     letter-spacing: .06em; text-transform: uppercase;
+    white-space: nowrap;
   }
   .panel-header .btn { margin-left: auto; }
 
   /* ── TABLE ── */
-  .table-wrap { overflow-x: auto; }
+  .table-wrap { overflow-x: auto; width: 100%; }
+  .table-wrap::-webkit-scrollbar { height: 4px; }
+  .table-wrap::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
   table {
     width: 100%; border-collapse: collapse;
     font-size: 12px;
@@ -486,8 +510,8 @@
   .badge-gray { background: rgba(148,163,184,.1); color: var(--text3); border: 1px solid var(--border); }
 
   /* ── TWO-COL LAYOUT ── */
-  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-  .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; min-width: 0; }
+  .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; min-width: 0; }
 
   /* ── PROGRESS ── */
   .progress-bar {
@@ -646,7 +670,7 @@
   ::-webkit-scrollbar-thumb:hover { background: var(--text3); }
 
   /* ── ENGIN CARD ── */
-  .engin-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; padding: 14px; }
+  .engin-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; padding: 14px; }
   .engin-card {
     background: var(--surface2);
     border: 1px solid var(--border);
@@ -722,15 +746,46 @@
   </div>
 </div>
 
+<style>
+  /* ── SCROLL TO TOP ── */
+  #scrollTop {
+    position: fixed; bottom: 24px; right: 24px;
+    width: 36px; height: 36px;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 4px;
+    color: var(--text3);
+    font-size: 16px;
+    cursor: pointer;
+    display: none;
+    align-items: center; justify-content: center;
+    z-index: 800;
+    transition: all .2s;
+    box-shadow: 0 4px 12px rgba(0,0,0,.3);
+  }
+  #scrollTop:hover { background: var(--accent); color: #000; border-color: var(--accent); }
+  #scrollTop.visible { display: flex; }
+  /* ── SCROLLBAR TRACK ── */
+  .content-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+  }
+</style>
+
 <div class="shell">
 
   <!-- ═══ SIDEBAR ═══ -->
   <nav class="sidebar">
     <div class="sidebar-brand">
-      <div class="brand-badge">GMAO v2.0</div>
+      <div class="brand-badge">GMAO v3.0</div>
       <div class="brand-name">PARC & ATELIER</div>
       <div class="brand-sub">Système de gestion industrielle</div>
     </div>
+
+    <div class="sidebar-nav">
 
     <!-- DASHBOARD -->
     <div class="sidebar-section">
@@ -804,6 +859,8 @@
       </div>
     </div>
 
+    </div><!-- /sidebar-nav -->
+
     <div class="sidebar-footer">
       <div class="user-card">
         <div class="user-avatar" id="avatarInitial">?</div>
@@ -876,7 +933,7 @@
     <div class="content">
 
       <!-- ════ PAGE: DASHBOARD ════ -->
-      <div class="page active" id="page-dashboard">
+      <div class="page active" id="page-dashboard" style="gap:16px">
 
         <!-- KPI row -->
         <div class="stats-row">
@@ -1036,7 +1093,7 @@
       </div>
 
       <!-- ════ PAGE: ENGINS ════ -->
-      <div class="page" id="page-engins">
+      <div class="page" id="page-engins" style="gap:16px">
         <div class="stats-row">
           <div class="stat-card green"><div class="stat-label">Disponibles</div><div class="stat-value">24</div></div>
           <div class="stat-card red"><div class="stat-label">En Panne</div><div class="stat-value">3</div></div>
@@ -1044,7 +1101,7 @@
           <div class="stat-card blue"><div class="stat-label">Total Flotte</div><div class="stat-value">30</div></div>
         </div>
 
-        <div class="panel">
+        <div class="panel" style="overflow:visible;flex:1">
           <div class="panel-header">
             <div class="panel-title">🚧 Parc Engins</div>
             <div style="display:flex;gap:8px;margin-left:auto">
@@ -1064,7 +1121,7 @@
       </div>
 
       <!-- ════ PAGE: CHANTIERS ════ -->
-      <div class="page" id="page-chantiers">
+      <div class="page" id="page-chantiers" style="gap:16px">
         <div class="panel">
           <div class="panel-header">
             <div class="panel-title">📍 Chantiers Actifs</div>
@@ -1119,7 +1176,7 @@
       </div>
 
       <!-- ════ PAGE: RÉCEPTIONS ════ -->
-      <div class="page" id="page-receptionsPage">
+      <div class="page" id="page-receptionsPage" style="gap:16px">
         <div class="panel">
           <div class="panel-header">
             <div class="panel-title">📥 Réceptions Engins</div>
@@ -1165,7 +1222,7 @@
       </div>
 
       <!-- ════ PAGE: INTERVENTIONS ════ -->
-      <div class="page" id="page-interventions">
+      <div class="page" id="page-interventions" style="gap:16px">
 
         <div class="section-chips">
           <span class="chip mec active" onclick="filterSection('mec',this)">Mécanique</span>
@@ -1259,7 +1316,7 @@
       </div>
 
       <!-- ════ PAGE: STOCK ════ -->
-      <div class="page" id="page-stock">
+      <div class="page" id="page-stock" style="gap:16px">
         <!-- Bannière rôle Magasinier -->
         <div id="magBanner" style="display:none" class="alert alert-ok">
           📦 Session Magasinier — Vous êtes le seul habilité à effectuer les entrées et sorties de stock
@@ -1373,7 +1430,7 @@
       </div>
 
       <!-- ════ PAGE: CARBURANT ════ -->
-      <div class="page" id="page-carburant">
+      <div class="page" id="page-carburant" style="gap:16px">
         <div class="stats-row">
           <div class="stat-card accent"><div class="stat-label">Gasoil (Litres)</div><div class="stat-value">3 420</div><div class="stat-sub">Réservoir : 5000L</div></div>
           <div class="stat-card blue"><div class="stat-label">Consommation / Sem.</div><div class="stat-value">840</div><div class="stat-sub">Litres cette semaine</div></div>
@@ -1457,7 +1514,7 @@
       </div>
 
       <!-- ════ PAGE: COORDINATION ════ -->
-      <div class="page" id="page-coordination">
+      <div class="page" id="page-coordination" style="gap:16px">
 
         <div class="stats-row">
           <div class="stat-card red"><div class="stat-label">Besoins Urgents</div><div class="stat-value">3</div><div class="stat-sub">Engins en attente</div></div>
@@ -1572,7 +1629,7 @@
       </div>
 
       <!-- ════ PAGE: RAPPORTS ════ -->
-      <div class="page" id="page-rapports">
+      <div class="page" id="page-rapports" style="gap:16px">
         <div class="panel">
           <div class="panel-header"><div class="panel-title">📊 Génération de Rapports</div></div>
           <div class="form-grid">
@@ -1652,7 +1709,7 @@
       </div>
 
       <!-- ════ PAGE: ADMIN UTILISATEURS ════ -->
-      <div class="page" id="page-adminUsers">
+      <div class="page" id="page-adminUsers" style="gap:16px">
         <div class="stats-row">
           <div class="stat-card accent"><div class="stat-label">Utilisateurs Actifs</div><div class="stat-value">5</div></div>
           <div class="stat-card blue"><div class="stat-label">Sessions Ouvertes</div><div class="stat-value" id="openSessions">0</div></div>
@@ -1688,7 +1745,7 @@
       </div>
 
       <!-- ════ PAGE: HISTORIQUE ════ -->
-      <div class="page" id="page-historique">
+      <div class="page" id="page-historique" style="gap:16px">
         <div class="stats-row">
           <div class="stat-card accent">
             <div class="stat-label">Total Entrées</div>
@@ -2248,8 +2305,8 @@ function applyAccessControl(user) {
 // ── SHOW PAGE WITH GUARD ──
 function showPage(id) {
   if (currentUser && !currentUser.pages.includes(id)) {
-    // Show access denied
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     const denied = document.getElementById('page-' + id);
     if (denied) {
       denied.classList.add('active');
@@ -3060,14 +3117,31 @@ function showToast(msg) {
   setTimeout(() => t.remove(), 3500);
 }
 
+// ═══ SCROLL TO TOP ═══
+function initScrollTop() {
+  const content = document.querySelector('.content');
+  const btn = document.getElementById('scrollTop');
+  if (!content || !btn) return;
+  content.addEventListener('scroll', () => {
+    btn.classList.toggle('visible', content.scrollTop > 200);
+  });
+  btn.addEventListener('click', () => {
+    content.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+}
+
 // ═══ INIT ═══
-const APP_VERSION = 'v3.0';
+const APP_VERSION = 'v3.1';
 if (localStorage.getItem('gmao_version') !== APP_VERSION) {
-  // Reset complet — nouvelle version avec historique + édition complète
   ['gmao_users','gmao_engins','gmao_interventions','gmao_stock','gmao_history','gmao_log'].forEach(k => localStorage.removeItem(k));
   localStorage.setItem('gmao_version', APP_VERSION);
 }
 document.getElementById('loginCode').focus();
+initScrollTop();
 </script>
+
+<!-- Bouton Scroll To Top -->
+<button id="scrollTop" title="Remonter en haut">↑</button>
+
 </body>
 </html>
