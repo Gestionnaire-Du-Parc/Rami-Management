@@ -204,6 +204,8 @@
   .avatar-atelier { background: linear-gradient(135deg,#3b82f6,#1d4ed8); color:#fff; }
   .avatar-parc { background: linear-gradient(135deg,#10b981,#065f46); color:#fff; }
   .avatar-coord { background: linear-gradient(135deg,#8b5cf6,#4c1d95); color:#fff; }
+  .avatar-mag { background: linear-gradient(135deg,#06b6d4,#0e7490); color:#fff; }
+  .avatar-mag   { background: linear-gradient(135deg,#f97316,#7c2d12); color:#fff; }
   .user-info { flex: 1; }
   .user-info-name { font-size: 13px; font-weight: 600; color: var(--text); }
   .user-info-role { font-family: var(--font-mono); font-size: 9px; color: var(--text3); margin-top: 2px; }
@@ -769,6 +771,21 @@
       </div>
     </div>
 
+    <!-- MAGASIN -->
+    <div class="sidebar-section" id="sectionMagasin">
+      <div class="sidebar-section-label">Magasin</div>
+      <div class="nav-item" id="navMagStock" onclick="showPage('stock')" style="display:none">
+        <span class="nav-icon">📦</span> Stock &amp; Pièces
+        <span class="nav-badge danger">2</span>
+      </div>
+      <div class="nav-item" id="navMagEntree" onclick="openModal('modalPiece')" style="display:none">
+        <span class="nav-icon">📥</span> Entrée Stock
+      </div>
+      <div class="nav-item" id="navMagSortie" onclick="openModal('modalSortieStock')" style="display:none">
+        <span class="nav-icon">📤</span> Sortie Stock
+      </div>
+    </div>
+
     <!-- COORDINATION -->
     <div class="sidebar-section">
       <div class="sidebar-section-label">Coordination</div>
@@ -1240,6 +1257,10 @@
 
       <!-- ════ PAGE: STOCK ════ -->
       <div class="page" id="page-stock">
+        <!-- Bannière rôle Magasinier -->
+        <div id="magBanner" style="display:none" class="alert alert-ok">
+          📦 Session Magasinier — Vous êtes le seul habilité à effectuer les entrées et sorties de stock
+        </div>
         <div class="stats-row">
           <div class="stat-card accent"><div class="stat-label">Références Stock</div><div class="stat-value">142</div></div>
           <div class="stat-card red"><div class="stat-label">Ruptures</div><div class="stat-value">2</div></div>
@@ -1255,8 +1276,8 @@
             <div class="panel-title">📦 Gestion des Pièces</div>
             <div style="display:flex;gap:8px;margin-left:auto">
               <input type="search" placeholder="Rechercher une pièce..." style="width:200px;padding:5px 10px;font-size:11px" oninput="filterStock(this.value)">
-              <button class="btn btn-primary btn-sm" onclick="openModal('modalPiece')">+ Entrée Stock</button>
-              <button class="btn btn-ghost btn-sm" onclick="openModal('modalSortieStock')">- Sortie Stock</button>
+              <button id="btnEntreeStock" class="btn btn-primary btn-sm" onclick="openModal('modalPiece')">+ Entrée Stock</button>
+              <button id="btnSortieStock" class="btn btn-ghost btn-sm" onclick="openModal('modalSortieStock')">- Sortie Stock</button>
             </div>
           </div>
           <div class="table-wrap">
@@ -1630,7 +1651,7 @@
       <!-- ════ PAGE: ADMIN UTILISATEURS ════ -->
       <div class="page" id="page-adminUsers">
         <div class="stats-row">
-          <div class="stat-card accent"><div class="stat-label">Utilisateurs Actifs</div><div class="stat-value">4</div></div>
+          <div class="stat-card accent"><div class="stat-label">Utilisateurs Actifs</div><div class="stat-value">5</div></div>
           <div class="stat-card blue"><div class="stat-label">Sessions Ouvertes</div><div class="stat-value" id="openSessions">0</div></div>
           <div class="stat-card green"><div class="stat-label">Dernière Connexion</div><div class="stat-value" style="font-size:14px;padding-top:6px" id="lastLoginDisplay">—</div></div>
           <div class="stat-card red"><div class="stat-label">Niveau Sécurité</div><div class="stat-value" style="font-size:18px;padding-top:4px">Admin</div></div>
@@ -1942,6 +1963,57 @@
   </div>
 </div>
 
+<!-- Modal: Edit User (Code + Nom) -->
+<div class="modal-overlay" id="modalEditCode">
+  <div class="modal" style="width:460px">
+    <div class="modal-header">
+      <div class="modal-title">✎ Modifier l'Utilisateur</div>
+      <button class="modal-close" onclick="closeModal('modalEditCode')">✕</button>
+    </div>
+    <div style="padding:20px;display:flex;flex-direction:column;gap:14px">
+      <!-- User identity card -->
+      <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--surface2);border-radius:4px;border:1px solid var(--border)">
+        <div class="user-row-avatar" id="editUserAvatar" style="width:42px;height:42px;font-size:16px">?</div>
+        <div>
+          <div style="font-family:var(--font-mono);font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.1em" id="editUserRole">—</div>
+          <div style="font-size:13px;font-weight:600;margin-top:2px" id="editUserName">—</div>
+        </div>
+      </div>
+      <!-- Nom -->
+      <div class="form-group">
+        <label>Nom / Prénom de l'utilisateur</label>
+        <input id="editNameInput" type="text" placeholder="Ex: Mohamed Hassan" maxlength="40"
+          style="background:var(--surface3);border:1px solid var(--border2);color:var(--text);font-family:var(--font-body);font-size:13px;padding:9px 12px;border-radius:3px;outline:none;transition:border-color .15s;width:100%">
+      </div>
+      <!-- Code actuel -->
+      <div class="form-group">
+        <label>Code d'accès actuel</label>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="code-display" id="editCurrentCode" style="flex:1;text-align:center;font-size:20px;letter-spacing:.25em">——</div>
+          <button class="btn btn-ghost btn-sm" onclick="toggleCodeVisibility()">👁</button>
+        </div>
+      </div>
+      <!-- Nouveau code -->
+      <div class="form-group">
+        <label>Nouveau Code (4–8 caractères)</label>
+        <div style="display:flex;gap:8px">
+          <input id="newCodeInput" type="text" maxlength="8" placeholder="Ex: ATELIER2"
+            style="flex:1;background:var(--surface3);border:1px solid var(--border2);color:var(--accent);font-family:var(--font-mono);font-size:16px;padding:9px 12px;border-radius:3px;outline:none;letter-spacing:.2em;text-transform:uppercase;width:100%"
+            oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'')">
+          <button class="btn btn-ghost btn-sm" onclick="generateRandom()" title="Générer aléatoire">↺</button>
+        </div>
+      </div>
+      <div id="editCodeError" style="display:none;font-family:var(--font-mono);font-size:10px;color:var(--danger);background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);padding:7px 10px;border-radius:3px">
+        ⚠ Code invalide — minimum 4 caractères alphanumériques
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modalEditCode')">Annuler</button>
+      <button class="btn btn-success" onclick="saveUserEdit()">✓ Enregistrer</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ═══════════════════════════════════════════════
 // SESSION & ACCESS CONTROL SYSTEM
@@ -1949,15 +2021,32 @@
 
 // Codes stockés en localStorage (persistants)
 const DEFAULT_USERS = [
-  { id:'master',       name:'Rami Mohamed Amine', role:'Master Admin',  init:'MA', avatarClass:'avatar-master',  code:'ADMIN2025', pages:['dashboard','engins','chantiers','receptionsPage','interventions','stock','carburant','coordination','rapports','adminUsers'] },
-  { id:'chef_atelier', name:'Chef Atelier',        role:"Chef d'Atelier", init:'CA', avatarClass:'avatar-atelier', code:'ATELIER1',  pages:['interventions','stock','carburant'] },
-  { id:'chef_parc',    name:'Chef de Parc',         role:'Chef de Parc',  init:'CP', avatarClass:'avatar-parc',    code:'PARC2025',  pages:['dashboard','engins','chantiers','receptionsPage'] },
-  { id:'coordinateur', name:'Amine',                role:'Coordinateur',  init:'A',  avatarClass:'avatar-coord',   code:'COORD01',   pages:['dashboard','engins','chantiers','receptionsPage','interventions','stock','carburant','coordination','rapports'] },
+  { id:'master',       name:'Rami Mohamed Amine', role:'Master Admin',   init:'MA', avatarClass:'avatar-master',  code:'ADMIN2025', pages:['dashboard','engins','chantiers','receptionsPage','interventions','stock','carburant','coordination','rapports','adminUsers'] },
+  { id:'chef_atelier', name:'Chef Atelier',        role:"Chef d'Atelier", init:'CA', avatarClass:'avatar-atelier', code:'ATELIER1',  pages:['interventions','carburant'] },
+  { id:'chef_parc',    name:'Chef de Parc',         role:'Chef de Parc',   init:'CP', avatarClass:'avatar-parc',    code:'PARC2025',  pages:['dashboard','engins','chantiers','receptionsPage'] },
+  { id:'coordinateur', name:'Amine',                role:'Coordinateur',   init:'A',  avatarClass:'avatar-coord',   code:'COORD01',   pages:['dashboard','engins','chantiers','receptionsPage','interventions','stock','carburant','coordination','rapports'] },
+  { id:'magasinier',   name:'Magasinier',           role:'Magasinier',     init:'MG', avatarClass:'avatar-mag',     code:'STOCK25',   pages:['stock'] },
 ];
 
 function getUsers() {
   const stored = localStorage.getItem('gmao_users');
-  return stored ? JSON.parse(stored) : DEFAULT_USERS;
+  if (!stored) return DEFAULT_USERS;
+  const users = JSON.parse(stored);
+  // Auto-migrate: add magasinier if missing, fix chef_atelier pages
+  const hasMag = users.find(u => u.id === 'magasinier');
+  const chefAt = users.find(u => u.id === 'chef_atelier');
+  let changed = false;
+  if (!hasMag) {
+    users.push({ id:'magasinier', name:'Magasinier', role:'Magasinier', init:'MG', avatarClass:'avatar-mag', code:'STOCK25', pages:['stock'] });
+    changed = true;
+  }
+  // Remove 'stock' from chef_atelier pages if present
+  if (chefAt && chefAt.pages.includes('stock')) {
+    chefAt.pages = chefAt.pages.filter(p => p !== 'stock');
+    changed = true;
+  }
+  if (changed) saveUsers(users);
+  return users;
 }
 function saveUsers(users) {
   localStorage.setItem('gmao_users', JSON.stringify(users));
@@ -1973,7 +2062,6 @@ function addLog(entry) {
 }
 
 let currentUser = null;
-let editingUserId = null;
 
 // ── LOGIN ──
 function doLogin() {
@@ -2012,8 +2100,7 @@ function doLogout() {
 
 // ── ACCESS CONTROL ──
 function applyAccessControl(user) {
-  const allPages = ['dashboard','engins','chantiers','receptionsPage','interventions','stock','carburant','coordination','rapports','adminUsers'];
-  // Show/hide nav items
+  // Show/hide all nav items based on allowed pages
   document.querySelectorAll('.nav-item').forEach(n => {
     const onclick = n.getAttribute('onclick') || '';
     const match = onclick.match(/showPage\('([^']+)'\)/);
@@ -2022,14 +2109,31 @@ function applyAccessControl(user) {
       n.style.display = user.pages.includes(pageId) ? '' : 'none';
     }
   });
-  // Show admin nav
-  document.getElementById('navAdminUsers').style.display =
-    user.id === 'master' ? '' : 'none';
-  // Show/hide export buttons for non-admin
+
+  // Admin nav — master only
+  document.getElementById('navAdminUsers').style.display = user.id === 'master' ? '' : 'none';
+
+  // Export buttons — master + coordinateur only
   const topActions = document.querySelector('.topbar-actions');
-  if (topActions) {
-    topActions.style.display = (user.id === 'master' || user.id === 'coordinateur') ? 'flex' : 'none';
-  }
+  if (topActions) topActions.style.display = (user.id === 'master' || user.id === 'coordinateur') ? 'flex' : 'none';
+
+  // Magasin sidebar section — magasinier only
+  const isMag    = user.id === 'magasinier';
+  const isMaster = user.id === 'master';
+  document.getElementById('sectionMagasin').style.display = isMag ? '' : 'none';
+  document.getElementById('navMagStock').style.display    = isMag ? '' : 'none';
+  document.getElementById('navMagEntree').style.display   = isMag ? '' : 'none';
+  document.getElementById('navMagSortie').style.display   = isMag ? '' : 'none';
+
+  // Entrée/Sortie Stock buttons — magasinier + master only, HIDDEN for all others
+  const btnEntree = document.getElementById('btnEntreeStock');
+  const btnSortie = document.getElementById('btnSortieStock');
+  if (btnEntree) btnEntree.style.display = (isMag || isMaster) ? '' : 'none';
+  if (btnSortie) btnSortie.style.display = (isMag || isMaster) ? '' : 'none';
+
+  // Magasinier banner on stock page
+  const magBanner = document.getElementById('magBanner');
+  if (magBanner) magBanner.style.display = isMag ? '' : 'none';
 }
 
 // ── SHOW PAGE WITH GUARD ──
@@ -2064,46 +2168,94 @@ function showPage(id) {
 }
 
 // ═══ ADMIN USER MANAGEMENT ═══
+let editingUserId = null;
+let codeVisible = false;
+
 function renderAdminUsers() {
   if (!currentUser || currentUser.id !== 'master') return;
   const users = getUsers();
-  // Stats
-  document.getElementById('openSessions').textContent = currentUser ? 1 : 0;
+  document.getElementById('openSessions').textContent = 1;
   const log = getLog();
   const lastOk = log.find(l => l.result === 'Succès');
   document.getElementById('lastLoginDisplay').textContent = lastOk ? lastOk.time.split(' ')[0] : '—';
 
-  // Users list
-  const list = document.getElementById('usersList');
-  list.innerHTML = users.map(u => `
-    <div class="user-row">
-      <div class="user-row-avatar ${u.avatarClass}">${u.init}</div>
-      <div class="user-info">
-        <div class="user-info-name">${u.name}</div>
-        <div class="user-info-role">${u.role} &nbsp;·&nbsp; Pages: ${u.pages.length}</div>
-      </div>
-      <div class="code-badge code-hidden" title="Cliquer pour voir" onclick="this.classList.toggle('code-hidden')">${u.code}</div>
-      <button class="btn btn-ghost btn-sm" onclick="openEditCode('${u.id}')">✎ Modifier</button>
-      <button class="btn btn-ghost btn-sm" onclick="quickRegen('${u.id}')">↺ Régénérer</button>
-    </div>
-  `).join('');
+  const scopeColors = {
+    master:'#ef4444', chef_atelier:'#3b82f6', chef_parc:'#10b981',
+    coordinateur:'#f97316', magasinier:'#06b6d4'
+  };
+  const scopeLabels = {
+    master:'Accès Total — Toutes sections',
+    chef_atelier:'Interventions + Carburant',
+    chef_parc:'Engins + Chantiers + Réceptions',
+    coordinateur:'Dashboard + Coordination + Rapports',
+    magasinier:'Entrée / Sortie Stock uniquement'
+  };
 
-  // Log
+  const list = document.getElementById('usersList');
+  list.innerHTML = `
+    <div style="display:grid;grid-template-columns:44px 1fr 1fr 120px 90px 90px;
+      align-items:center;gap:12px;padding:8px 16px;
+      background:var(--surface3);border-bottom:2px solid var(--border2)">
+      <div></div>
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--text3);
+        text-transform:uppercase;letter-spacing:.1em">NOM / RÔLE</div>
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--text3);
+        text-transform:uppercase;letter-spacing:.1em">PÉRIMÈTRE D'ACCÈS</div>
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--text3);
+        text-transform:uppercase;letter-spacing:.1em;text-align:center">CODE SESSION</div>
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--text3);
+        text-transform:uppercase;letter-spacing:.1em;text-align:center">MODIFIER</div>
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--text3);
+        text-transform:uppercase;letter-spacing:.1em;text-align:center">REGEN</div>
+    </div>
+    ${users.map(u => `
+    <div style="display:grid;grid-template-columns:44px 1fr 1fr 120px 90px 90px;
+      align-items:center;gap:12px;padding:13px 16px;
+      border-bottom:1px solid var(--border);transition:background .12s;cursor:default"
+      onmouseenter="this.style.background='var(--surface2)'"
+      onmouseleave="this.style.background=''">
+      <div class="${u.avatarClass}" style="width:36px;height:36px;border-radius:4px;
+        display:flex;align-items:center;justify-content:center;
+        font-family:var(--font-display);font-size:13px;font-weight:700;flex-shrink:0">${u.init}</div>
+      <div>
+        <div style="font-size:13px;font-weight:600;color:var(--text)">${u.name}</div>
+        <div style="font-family:var(--font-mono);font-size:9px;color:var(--text3);
+          margin-top:3px;text-transform:uppercase;letter-spacing:.08em">${u.role}</div>
+      </div>
+      <div style="font-size:11.5px;font-weight:500;color:${scopeColors[u.id]||'var(--text3)'}">${scopeLabels[u.id]||u.role}</div>
+      <div style="text-align:center">
+        <span style="font-family:var(--font-mono);font-size:13px;font-weight:700;
+          color:var(--accent);background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);
+          padding:5px 10px;border-radius:3px;letter-spacing:.18em;display:inline-block;
+          filter:blur(5px);cursor:pointer;transition:filter .2s;min-width:80px"
+          onclick="this.style.filter=this.style.filter?'':'blur(5px)'"
+          title="Cliquer pour révéler">${u.code}</span>
+      </div>
+      <div style="text-align:center">
+        <button class="btn btn-ghost btn-sm" onclick="openEditCode('${u.id}')"
+          style="width:80px">✎ Modifier</button>
+      </div>
+      <div style="text-align:center">
+        <button class="btn btn-ghost btn-sm" onclick="quickRegen('${u.id}')"
+          style="width:80px;color:var(--accent2);border-color:rgba(59,130,246,.4)">↺ Regen</button>
+      </div>
+    </div>`).join('')}`;
+
   const tbody = document.getElementById('loginLog');
   const logData = getLog();
-  if (logData.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:20px;font-family:var(--font-mono);font-size:11px">Aucune activité enregistrée</td></tr>';
+  if (!logData.length) {
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text3);
+      padding:24px;font-family:var(--font-mono);font-size:11px">
+      Aucune activité enregistrée</td></tr>`;
     return;
   }
-  tbody.innerHTML = logData.map(l => `
-    <tr>
-      <td class="mono">${l.time}</td>
-      <td>${l.user}</td>
-      <td><span class="badge badge-gray">${l.role}</span></td>
-      <td>${l.action}</td>
-      <td><span class="badge ${l.result==='Succès'?'badge-ok':l.result==='Échec'?'badge-danger':'badge-gray'}">${l.result}</span></td>
-    </tr>
-  `).join('');
+  tbody.innerHTML = logData.map(l => `<tr>
+    <td class="mono">${l.time}</td>
+    <td style="font-weight:600">${l.user}</td>
+    <td><span class="badge badge-gray">${l.role}</span></td>
+    <td style="color:var(--text2);font-size:11px">${l.action}</td>
+    <td><span class="badge ${l.result==='Succès'?'badge-ok':l.result==='Échec'?'badge-danger':'badge-blue'}">${l.result}</span></td>
+  </tr>`).join('');
 }
 
 function openEditCode(userId) {
@@ -2111,68 +2263,92 @@ function openEditCode(userId) {
   const user = users.find(u => u.id === userId);
   if (!user) return;
   editingUserId = userId;
+  codeVisible = false;
   document.getElementById('editUserName').textContent = user.name;
   document.getElementById('editUserRole').textContent = user.role;
-  document.getElementById('editUserAvatar').textContent = user.init;
-  document.getElementById('editUserAvatar').className = 'user-row-avatar ' + user.avatarClass;
-  document.getElementById('editCurrentCode').textContent = user.code;
+  const av = document.getElementById('editUserAvatar');
+  av.textContent = user.init;
+  av.className = user.avatarClass;
+  av.style.cssText = 'width:42px;height:42px;font-size:16px;display:flex;align-items:center;justify-content:center;border-radius:4px;font-family:var(--font-display);font-weight:700;flex-shrink:0';
+  const codeEl = document.getElementById('editCurrentCode');
+  codeEl.textContent = '••••••';
+  codeEl._real = user.code;
+  document.getElementById('editNameInput').value = user.name;
   document.getElementById('newCodeInput').value = '';
+  document.getElementById('editCodeError').style.display = 'none';
   openModal('modalEditCode');
+}
+
+function toggleCodeVisibility() {
+  codeVisible = !codeVisible;
+  const el = document.getElementById('editCurrentCode');
+  el.textContent = codeVisible ? (el._real || '——') : '••••••';
 }
 
 function generateRandom() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  let code = '';
-  for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
-  document.getElementById('newCodeInput').value = code;
+  let c = '';
+  for (let i=0;i<6;i++) c += chars[Math.floor(Math.random()*chars.length)];
+  document.getElementById('newCodeInput').value = c;
+  document.getElementById('editCodeError').style.display = 'none';
 }
 
-function saveNewCode() {
-  const newCode = document.getElementById('newCodeInput').value.trim().toUpperCase();
-  if (!newCode || newCode.length < 4) {
-    showToast('⚠ Code trop court — minimum 4 caractères');
-    return;
+function saveUserEdit() {
+  const newCode = document.getElementById('newCodeInput').value.trim().toUpperCase().replace(/[^A-Z0-9]/g,'');
+  const newName = document.getElementById('editNameInput').value.trim();
+  if (newCode && newCode.length < 4) {
+    document.getElementById('editCodeError').style.display = 'block'; return;
   }
   const users = getUsers();
   const user = users.find(u => u.id === editingUserId);
   if (!user) return;
-  const oldCode = user.code;
-  user.code = newCode;
+  const changes = [];
+  if (newName && newName !== user.name) {
+    const old = user.name;
+    user.name = newName;
+    const parts = newName.split(' ').filter(Boolean);
+    user.init = parts.length>=2 ? (parts[0][0]+parts[1][0]).toUpperCase() : newName.slice(0,2).toUpperCase();
+    changes.push('Nom: "'+old+'" → "'+newName+'"');
+  }
+  if (newCode && newCode !== user.code) {
+    const old = user.code;
+    user.code = newCode;
+    changes.push('Code: '+old+' → '+newCode);
+  }
+  if (!changes.length) { closeModal('modalEditCode'); showToast('Aucune modification'); return; }
   saveUsers(users);
-  addLog({ user: currentUser.name, role: 'Master Admin', action: `Code modifié pour ${user.name} (${oldCode} → ${newCode})`, result: 'Admin' });
+  addLog({ user:currentUser.name, role:'Master Admin', action:'Modif. '+user.role+' — '+changes.join(' | '), result:'Admin' });
   closeModal('modalEditCode');
   renderAdminUsers();
-  showToast('✓ Code mis à jour pour ' + user.name + ' : ' + newCode);
+  showToast('✓ '+user.role+' mis à jour : '+user.name);
 }
+function saveNewCode() { saveUserEdit(); }
 
 function quickRegen(userId) {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  let code = '';
-  for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  let c=''; for(let i=0;i<6;i++) c+=chars[Math.floor(Math.random()*chars.length)];
   const users = getUsers();
-  const user = users.find(u => u.id === userId);
+  const user = users.find(u=>u.id===userId);
   if (!user) return;
-  const old = user.code;
-  user.code = code;
+  const old = user.code; user.code = c;
   saveUsers(users);
-  addLog({ user: currentUser.name, role: 'Master Admin', action: `Regen code ${user.name} (${old} → ${code})`, result: 'Admin' });
+  addLog({ user:currentUser.name, role:'Master Admin', action:'Regen '+user.role+' — '+old+' → '+c, result:'Admin' });
   renderAdminUsers();
-  showToast('↺ Nouveau code ' + user.name + ' : ' + code);
+  showToast('↺ Nouveau code '+user.role+' : '+c);
 }
 
 function regenerateAllCodes() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   const users = getUsers();
   users.forEach(u => {
-    if (u.id === 'master') return; // Ne pas régénérer le master automatiquement
-    let code = '';
-    for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
-    u.code = code;
+    if (u.id==='master') return;
+    let c=''; for(let i=0;i<6;i++) c+=chars[Math.floor(Math.random()*chars.length)];
+    u.code=c;
   });
   saveUsers(users);
-  addLog({ user: currentUser.name, role: 'Master Admin', action: 'Régénération globale des codes', result: 'Admin' });
+  addLog({ user:currentUser.name, role:'Master Admin', action:'Régénération globale de tous les codes', result:'Admin' });
   renderAdminUsers();
-  showToast('↺ Tous les codes ont été régénérés');
+  showToast('↺ Tous les codes régénérés avec succès');
 }
 
 // ═══ DATA ═══
@@ -2193,16 +2369,16 @@ const engins = [
 
 // ═══ NAVIGATION ═══
 const pageTitles = {
-  dashboard: ['Dashboard Coordinateur', 'gmao / dashboard'],
-  engins: ['Parc Engins', 'gmao / parc / engins'],
-  chantiers: ['Chantiers', 'gmao / parc / chantiers'],
-  receptionsPage: ['Réceptions', 'gmao / parc / réceptions'],
-  interventions: ['Ordres de Travail', 'gmao / atelier / interventions'],
-  stock: ['Gestion Stock', 'gmao / atelier / stock'],
-  carburant: ['Carburant & Lubrifiants', 'gmao / atelier / carburant'],
-  coordination: ['Dashboard Coordinateur', 'gmao / coordination'],
-  rapports: ['Rapports & Exports', 'gmao / rapports'],
-  adminUsers: ['Gestion Utilisateurs', 'gmao / admin / utilisateurs'],
+  dashboard:      ['Dashboard Coordinateur',  'gmao / dashboard'],
+  engins:         ['Parc Engins',             'gmao / parc / engins'],
+  chantiers:      ['Chantiers',               'gmao / parc / chantiers'],
+  receptionsPage: ['Réceptions',              'gmao / parc / réceptions'],
+  interventions:  ['Ordres de Travail',        'gmao / atelier / interventions'],
+  stock:          ['Gestion Stock & Magasin',  'gmao / atelier / stock'],
+  carburant:      ['Carburant & Lubrifiants',  'gmao / atelier / carburant'],
+  coordination:   ['Dashboard Coordinateur',  'gmao / coordination'],
+  rapports:       ['Rapports & Exports',       'gmao / rapports'],
+  adminUsers:     ['Gestion Utilisateurs',     'gmao / admin / utilisateurs'],
 };
 
 // ═══ ENGINS GRID ═══
@@ -2350,43 +2526,13 @@ function showToast(msg) {
   setTimeout(() => t.remove(), 3500);
 }
 
-// ═══ INIT — show login only ═══
-// App starts locked, loginScreen is visible by default
+// ═══ INIT — version check to refresh users if needed ═══
+const APP_VERSION = 'v2.3';
+if (localStorage.getItem('gmao_version') !== APP_VERSION) {
+  localStorage.removeItem('gmao_users');
+  localStorage.setItem('gmao_version', APP_VERSION);
+}
 document.getElementById('loginCode').focus();
 </script>
-<!-- Modal: Edit User Code -->
-<div class="modal-overlay" id="modalEditCode">
-  <div class="modal" style="width:420px">
-    <div class="modal-header">
-      <div class="modal-title">🔑 Modifier le Code d'Accès</div>
-      <button class="modal-close" onclick="closeModal('modalEditCode')">✕</button>
-    </div>
-    <div style="padding:20px;display:flex;flex-direction:column;gap:16px">
-      <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--surface2);border-radius:4px;border:1px solid var(--border)">
-        <div class="user-row-avatar" id="editUserAvatar" style="width:40px;height:40px">M</div>
-        <div>
-          <div style="font-size:13px;font-weight:600" id="editUserName">—</div>
-          <div style="font-family:var(--font-mono);font-size:9px;color:var(--text3)" id="editUserRole">—</div>
-        </div>
-      </div>
-      <div class="form-group">
-        <label>Code Actuel</label>
-        <div class="code-display" id="editCurrentCode">——</div>
-      </div>
-      <div class="form-group">
-        <label>Nouveau Code (4–8 caractères)</label>
-        <input class="login-input" id="newCodeInput" type="text" maxlength="8" placeholder="Ex: ATELIER2"
-          style="text-transform:uppercase;letter-spacing:.2em"
-          oninput="this.value=this.value.toUpperCase()">
-      </div>
-      <button class="btn btn-primary" style="width:100%" onclick="generateRandom()">↺ Générer Code Aléatoire</button>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('modalEditCode')">Annuler</button>
-      <button class="btn btn-primary" onclick="saveNewCode()">✓ Enregistrer</button>
-    </div>
-  </div>
-</div>
-
 </body>
 </html>
