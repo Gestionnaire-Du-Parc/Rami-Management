@@ -3637,14 +3637,20 @@ setInterval(() => { if (currentUser) refreshTaskBadge(); }, 5000);
   const app = initializeApp(firebaseConfig);
   const analytics = getAnalytics(app);
   const db = getFirestore(app);
-    addDoc(collection(db, "materiels"), {
-  nom: "Camion Volvo",
-  type: "Camion",
-  etat: "Bon",
-  dateAjout: new Date()
-})
-.then(() => console.log("Matériel ajouter"))
-.catch((error) => console.error(error));
+   document.getElementById("btnAddEngin")
+  .addEventListener("click", addMateriel);
+    function addMateriel() {
+  const nom = document.getElementById("nom").value;
+  const type = document.getElementById("type").value;
+  const etat = document.getElementById("etat").value;
+
+  addDoc(collection(db, "materiels"), {
+    nom: nom,
+    type: type,
+    etat: etat,
+    dateAjout: new Date()
+  });
+}
 </script>
 </body>
 </html>
