@@ -3636,6 +3636,7 @@ setInterval(() => { if (currentUser) refreshTaskBadge(); }, 5000);
   // Initialize Firebase
   const app = initializeApp(firebaseConfig);
   const analytics = getAnalytics(app);
+  const db = getFirestore(app);
     addDoc(collection(db, "materiels"), {
   nom: "Camion Volvo",
   type: "Camion",
