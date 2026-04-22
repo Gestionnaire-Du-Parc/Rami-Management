@@ -3062,19 +3062,33 @@ function saveEngin() {
   const id = document.getElementById('newEnginId').value.trim().toUpperCase() || 'ENG-'+(Date.now()%10000);
   const name = document.getElementById('newEnginName').value.trim();
   if (!name) { showToast('⚠ Modèle requis'); return; }
-  const engs = getEngins();
+ async function saveEngin() {
+  const id = document.getElementById('newEnginId').value.trim().toUpperCase() || 'ENG-'+(Date.now()%10000);
+  const name = document.getElementById('newEnginName').value.trim();
+  if (!name) { showToast('⚠ Modèle requis'); return; }
+
   const newEng = {
     id, name,
-    type:    document.getElementById('newEnginType').value.trim(),
+    type: document.getElementById('newEnginType').value.trim(),
     chassis: document.getElementById('newEnginChassis').value.trim(),
-    serie:   document.getElementById('newEnginSerie').value.trim(),
-    annee:   document.getElementById('newEnginAnnee').value.trim(),
-    heures:  document.getElementById('newEnginHeures').value.trim() || '0 h',
-    chantier:document.getElementById('newEnginChantier').value.trim() || 'Base',
-    statut:  document.getElementById('newEnginStatut').value || 'dispo',
+    serie: document.getElementById('newEnginSerie').value.trim(),
+    annee: document.getElementById('newEnginAnnee').value.trim(),
+    heures: document.getElementById('newEnginHeures').value.trim() || '0 h',
+    chantier: document.getElementById('newEnginChantier').value.trim() || 'Base',
+    statut: document.getElementById('newEnginStatut').value || 'dispo',
+    createdAt: new Date()
   };
-  engs.push(newEng);
-  saveEngins(engs);
+
+  try {
+    await addDoc(collection(db, "engins"), newEng);
+    showToast('✓ Engin ajouté (Firebase)');
+  } catch (e) {
+    console.error(e);
+    showToast('❌ Erreur Firebase');
+  }
+
+  closeModal('modalEngin');
+}
   addHistory({ module:'Parc Engins', action:'Nouvel engin créé', cible:id+' — '+name, avant:'—', apres:'Statut: '+newEng.statut+' | Heures: '+newEng.heures });
   closeModal('modalEngin');
   renderEngins('');
@@ -3637,20 +3651,7 @@ setInterval(() => { if (currentUser) refreshTaskBadge(); }, 5000);
   const app = initializeApp(firebaseConfig);
   const analytics = getAnalytics(app);
   const db = getFirestore(app);
-   document.getElementById("btnAddEngin")
-  .addEventListener("click", addMateriel);
-    function addMateriel() {
-  const nom = document.getElementById("nom").value;
-  const type = document.getElementById("type").value;
-  const etat = document.getElementById("etat").value;
 
-  addDoc(collection(db, "materiels"), {
-    nom: nom,
-    type: type,
-    etat: etat,
-    dateAjout: new Date()
-  });
-}
 </script>
 </body>
 </html>
