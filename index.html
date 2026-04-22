@@ -3617,6 +3617,7 @@ setInterval(() => { if (currentUser) refreshTaskBadge(); }, 5000);
   // Import the functions you need from the SDKs you need
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
   import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-analytics.js";
+  import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
   // TODO: Add SDKs for Firebase products that you want to use
   // https://firebase.google.com/docs/web/setup#available-libraries
 
@@ -3635,6 +3636,14 @@ setInterval(() => { if (currentUser) refreshTaskBadge(); }, 5000);
   // Initialize Firebase
   const app = initializeApp(firebaseConfig);
   const analytics = getAnalytics(app);
+    addDoc(collection(db, "materiels"), {
+  nom: "Camion Volvo",
+  type: "Camion",
+  etat: "Bon",
+  dateAjout: new Date()
+})
+.then(() => console.log("Matériel ajouter"))
+.catch((error) => console.error(error));
 </script>
 </body>
 </html>
