@@ -2315,87 +2315,165 @@
   </div>
 </div>
 
-<script>
+<script type="module">
+// ═══════════════════════════════════════════════
+// FIREBASE INIT
+// ═══════════════════════════════════════════════
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc, collection, getDocs, addDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getAuth, signInAnonymously, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDT0d1rwpjZN0yUcxHkZl5yeGFKnqOoLr0",
+  authDomain: "gmao-parc-atelier.firebaseapp.com",
+  databaseURL: "https://gmao-parc-atelier-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "gmao-parc-atelier",
+  storageBucket: "gmao-parc-atelier.firebasestorage.app",
+  messagingSenderId: "637638426017",
+  appId: "1:637638426017:web:3f76c4698874f7476bdfe0",
+  measurementId: "G-2SFLYGGFBH"
+};
+
+const fbApp = initializeApp(firebaseConfig);
+const db    = getFirestore(fbApp);
+const auth  = getAuth(fbApp);
+
+// ═══ CACHE LOCAL (pour rapidité) ═══
+const _cache = {};
+
+async function fsGet(colName) {
+  if (_cache[colName]) return _cache[colName];
+  const snap = await getDocs(collection(db, colName));
+  const data = [];
+  snap.forEach(d => data.push({ _docId: d.id, ...d.data() }));
+  _cache[colName] = data;
+  return data;
+}
+
+async function fsSet(colName, data) {
+  _cache[colName] = null; // invalider cache
+  const docRef = doc(db, colName, 'main');
+  await setDoc(docRef, { items: JSON.stringify(data) });
+}
+
+async function fsGetMain(colName, defaultVal) {
+  try {
+    const docRef = doc(db, colName, 'main');
+    const snap = await getDoc(docRef);
+    if (snap.exists()) {
+      const raw = snap.data().items;
+      return JSON.parse(raw);
+    }
+    return defaultVal;
+  } catch(e) {
+    console.error('fsGetMain error', colName, e);
+    return defaultVal;
+  }
+}
+
+async function fsSetMain(colName, data) {
+  const docRef = doc(db, colName, 'main');
+  await setDoc(docRef, { items: JSON.stringify(data) });
+}
+
 // ═══════════════════════════════════════════════
 // SESSION & ACCESS CONTROL SYSTEM
 // ═══════════════════════════════════════════════
 
-// Codes stockés en localStorage (persistants)
 const DEFAULT_USERS = [
   { id:'master',       name:'Rami Mohamed Amine', role:'Master Admin',   init:'MA', avatarClass:'avatar-master',  code:'ADMIN2025', pages:['dashboard','engins','chantiers','receptionsPage','interventions','stock','carburant','coordination','rapports','adminUsers','historique','taches'] },
   { id:'chef_atelier', name:'Chef Atelier',        role:"Chef d'Atelier", init:'CA', avatarClass:'avatar-atelier', code:'ATELIER1',  pages:['interventions','carburant','historique','taches'] },
-  { id:'chef_parc',    name:'Chef de Parc',         role:'Chef de Parc',   init:'CP', avatarClass:'avatar-parc',    code:'PARC2025',  pages:['dashboard','engins','chantiers','receptionsPage','historique','taches'] },
-  { id:'coordinateur', name:'Amine',                role:'Coordinateur',   init:'A',  avatarClass:'avatar-coord',   code:'COORD01',   pages:['dashboard','engins','chantiers','receptionsPage','interventions','stock','carburant','coordination','rapports','historique','taches'] },
-  { id:'magasinier',   name:'Magasinier',           role:'Magasinier',     init:'MG', avatarClass:'avatar-mag',     code:'STOCK25',   pages:['stock','historique','taches'] },
+  { id:'chef_parc',    name:'Chef de Parc',        role:'Chef de Parc',   init:'CP', avatarClass:'avatar-parc',    code:'PARC2025',  pages:['dashboard','engins','chantiers','receptionsPage','historique','taches'] },
+  { id:'coordinateur', name:'Amine',               role:'Coordinateur',   init:'A',  avatarClass:'avatar-coord',   code:'COORD01',   pages:['dashboard','engins','chantiers','receptionsPage','interventions','stock','carburant','coordination','rapports','historique','taches'] },
+  { id:'magasinier',   name:'Magasinier',          role:'Magasinier',     init:'MG', avatarClass:'avatar-mag',     code:'STOCK25',   pages:['stock','historique','taches'] },
 ];
 
-function getUsers() {
-  const stored = localStorage.getItem('gmao_users');
-  if (!stored) return DEFAULT_USERS;
-  const users = JSON.parse(stored);
-  // Auto-migrate: add magasinier if missing, fix chef_atelier pages, ensure 'taches' page on every role
+let _usersCache = null;
+async function getUsers() {
+  if (_usersCache) return _usersCache;
+  const stored = await fsGetMain('gmao_users', null);
+  let users = stored || DEFAULT_USERS;
+  let changed = false;
   const hasMag = users.find(u => u.id === 'magasinier');
   const chefAt = users.find(u => u.id === 'chef_atelier');
-  let changed = false;
   if (!hasMag) {
     users.push({ id:'magasinier', name:'Magasinier', role:'Magasinier', init:'MG', avatarClass:'avatar-mag', code:'STOCK25', pages:['stock','historique','taches'] });
     changed = true;
   }
-  // Remove 'stock' from chef_atelier pages if present
   if (chefAt && chefAt.pages.includes('stock')) {
     chefAt.pages = chefAt.pages.filter(p => p !== 'stock');
     changed = true;
   }
-  // Auto-add 'taches' to every user
   users.forEach(u => {
     if (!u.pages.includes('taches')) { u.pages.push('taches'); changed = true; }
   });
-  if (changed) saveUsers(users);
+  if (changed) await saveUsers(users);
+  _usersCache = users;
   return users;
 }
-function saveUsers(users) {
-  localStorage.setItem('gmao_users', JSON.stringify(users));
+async function saveUsers(users) {
+  _usersCache = users;
+  await fsSetMain('gmao_users', users);
 }
-function getLog() {
-  return JSON.parse(localStorage.getItem('gmao_log') || '[]');
+
+let _logCache = null;
+async function getLog() {
+  if (_logCache) return _logCache;
+  _logCache = await fsGetMain('gmao_log', []);
+  return _logCache;
 }
-function addLog(entry) {
-  const log = getLog();
+async function addLog(entry) {
+  const log = await getLog();
   log.unshift({ ...entry, time: new Date().toLocaleString('fr-FR') });
   if (log.length > 50) log.pop();
-  localStorage.setItem('gmao_log', JSON.stringify(log));
+  _logCache = log;
+  await fsSetMain('gmao_log', log);
 }
 
 let currentUser = null;
 
 // ── LOGIN ──
-function doLogin() {
+async function doLogin() {
   const code = document.getElementById('loginCode').value.trim().toUpperCase();
-  const users = getUsers();
+  showToast('⟳ Connexion en cours...');
+  try {
+    await signInAnonymously(auth);
+  } catch(e) {
+    showToast('⚠ Erreur Firebase Auth');
+    return;
+  }
+  const users = await getUsers();
   const user = users.find(u => u.code.toUpperCase() === code);
   if (!user) {
     document.getElementById('loginError').classList.add('show');
     document.getElementById('loginCode').value = '';
-    addLog({ user:'Inconnu', role:'—', action:'Tentative connexion', result:'Échec' });
+    await addLog({ user:'Inconnu', role:'—', action:'Tentative connexion', result:'Échec' });
     setTimeout(() => document.getElementById('loginError').classList.remove('show'), 3000);
     return;
   }
   currentUser = user;
-  addLog({ user: user.name, role: user.role, action: 'Connexion', result: 'Succès' });
+  await addLog({ user: user.name, role: user.role, action: 'Connexion', result: 'Succès' });
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('avatarInitial').textContent = user.init;
   document.getElementById('userNameDisplay').textContent = user.name;
   document.getElementById('userRoleDisplay').textContent = user.role;
   applyAccessControl(user);
-  // Go to first allowed page
   showPage(user.pages[0]);
   showToast('✓ Bienvenue, ' + user.name + ' — ' + user.role);
 }
 
-function doLogout() {
+async function doLogout() {
   if (!currentUser) return;
-  addLog({ user: currentUser.name, role: currentUser.role, action: 'Déconnexion', result: '—' });
+  await addLog({ user: currentUser.name, role: currentUser.role, action: 'Déconnexion', result: '—' });
+  await signOut(auth);
   currentUser = null;
+  _usersCache = null;
+  _logCache = null;
+  _enginsCache = null;
+  _interCache = null;
+  _stockCache = null;
+  _histCache = null;
+  _tachesCache = null;
   document.getElementById('loginCode').value = '';
   document.getElementById('loginScreen').style.display = 'flex';
   document.getElementById('avatarInitial').textContent = '?';
@@ -2405,7 +2483,6 @@ function doLogout() {
 
 // ── ACCESS CONTROL ──
 function applyAccessControl(user) {
-  // Show/hide all nav items based on allowed pages
   document.querySelectorAll('.nav-item').forEach(n => {
     const onclick = n.getAttribute('onclick') || '';
     const match = onclick.match(/showPage\('([^']+)'\)/);
@@ -2414,37 +2491,26 @@ function applyAccessControl(user) {
       n.style.display = user.pages.includes(pageId) ? '' : 'none';
     }
   });
-
-  // Admin nav — master only
   document.getElementById('navAdminUsers').style.display = user.id === 'master' ? '' : 'none';
-  // Historique — all roles
   const navH = document.getElementById('navHistorique');
   if (navH) navH.style.display = user.pages.includes('historique') ? '' : 'none';
-
-  // Export buttons — master + coordinateur only
   const topActions = document.querySelector('.topbar-actions');
   if (topActions) topActions.style.display = (user.id === 'master' || user.id === 'coordinateur') ? 'flex' : 'none';
-
-  // Magasin sidebar section — magasinier only
   const isMag    = user.id === 'magasinier';
   const isMaster = user.id === 'master';
   document.getElementById('sectionMagasin').style.display = isMag ? '' : 'none';
   document.getElementById('navMagStock').style.display    = isMag ? '' : 'none';
   document.getElementById('navMagEntree').style.display   = isMag ? '' : 'none';
   document.getElementById('navMagSortie').style.display   = isMag ? '' : 'none';
-
-  // Entrée/Sortie Stock buttons — magasinier + master only, HIDDEN for all others
   const btnEntree = document.getElementById('btnEntreeStock');
   const btnSortie = document.getElementById('btnSortieStock');
   if (btnEntree) btnEntree.style.display = (isMag || isMaster) ? '' : 'none';
   if (btnSortie) btnSortie.style.display = (isMag || isMaster) ? '' : 'none';
-
-  // Magasinier banner on stock page
   const magBanner = document.getElementById('magBanner');
   if (magBanner) magBanner.style.display = isMag ? '' : 'none';
 }
 
-// ── SHOW PAGE WITH GUARD ──
+// ── SHOW PAGE ──
 function showPage(id) {
   if (currentUser && !currentUser.pages.includes(id)) {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -2466,98 +2532,65 @@ function showPage(id) {
   if (page) page.classList.add('active');
   const info = pageTitles[id] || [id, ''];
   document.getElementById('pageTitle').textContent = info[0];
-  document.getElementById('pagePath').textContent = info[1];
+  document.getElementById('pagePath').textContent  = info[1];
   document.querySelectorAll('.nav-item').forEach(n => {
     if (n.getAttribute('onclick')?.includes(id)) n.classList.add('active');
   });
-  if (id === 'engins') renderEngins('');
+  if (id === 'engins')      renderEngins('');
   if (id === 'interventions') renderInterventions();
-  if (id === 'stock') { renderStock(); }
-  if (id === 'adminUsers') renderAdminUsers();
-  if (id === 'historique') renderHistorique('');
+  if (id === 'stock')       renderStock();
+  if (id === 'adminUsers')  renderAdminUsers();
+  if (id === 'historique')  renderHistorique('');
+  if (id === 'taches')      renderTaches();
   notifPanel.classList.remove('open');
 }
 
 // ═══ ADMIN USER MANAGEMENT ═══
 let editingUserId = null;
-let codeVisible = false;
+let codeVisible   = false;
 
-function renderAdminUsers() {
+async function renderAdminUsers() {
   if (!currentUser || currentUser.id !== 'master') return;
-  const users = getUsers();
+  const users = await getUsers();
   document.getElementById('openSessions').textContent = 1;
-  const log = getLog();
+  const log = await getLog();
   const lastOk = log.find(l => l.result === 'Succès');
   document.getElementById('lastLoginDisplay').textContent = lastOk ? lastOk.time.split(' ')[0] : '—';
 
-  const scopeColors = {
-    master:'#ef4444', chef_atelier:'#3b82f6', chef_parc:'#10b981',
-    coordinateur:'#f97316', magasinier:'#06b6d4'
-  };
-  const scopeLabels = {
-    master:'Accès Total — Toutes sections',
-    chef_atelier:'Interventions + Carburant',
-    chef_parc:'Engins + Chantiers + Réceptions',
-    coordinateur:'Dashboard + Coordination + Rapports',
-    magasinier:'Entrée / Sortie Stock uniquement'
-  };
+  const scopeColors  = { master:'#ef4444', chef_atelier:'#3b82f6', chef_parc:'#10b981', coordinateur:'#f97316', magasinier:'#06b6d4' };
+  const scopeLabels  = { master:'Accès Total — Toutes sections', chef_atelier:'Interventions + Carburant', chef_parc:'Engins + Chantiers + Réceptions', coordinateur:'Dashboard + Coordination + Rapports', magasinier:'Entrée / Sortie Stock uniquement' };
 
   const list = document.getElementById('usersList');
   list.innerHTML = `
-    <div style="display:grid;grid-template-columns:44px 1fr 1fr 120px 90px 90px;
-      align-items:center;gap:12px;padding:8px 16px;
-      background:var(--surface3);border-bottom:2px solid var(--border2)">
+    <div style="display:grid;grid-template-columns:44px 1fr 1fr 120px 90px 90px;align-items:center;gap:12px;padding:8px 16px;background:var(--surface3);border-bottom:2px solid var(--border2)">
       <div></div>
-      <div style="font-family:var(--font-mono);font-size:9px;color:var(--text3);
-        text-transform:uppercase;letter-spacing:.1em">NOM / RÔLE</div>
-      <div style="font-family:var(--font-mono);font-size:9px;color:var(--text3);
-        text-transform:uppercase;letter-spacing:.1em">PÉRIMÈTRE D'ACCÈS</div>
-      <div style="font-family:var(--font-mono);font-size:9px;color:var(--text3);
-        text-transform:uppercase;letter-spacing:.1em;text-align:center">CODE SESSION</div>
-      <div style="font-family:var(--font-mono);font-size:9px;color:var(--text3);
-        text-transform:uppercase;letter-spacing:.1em;text-align:center">MODIFIER</div>
-      <div style="font-family:var(--font-mono);font-size:9px;color:var(--text3);
-        text-transform:uppercase;letter-spacing:.1em;text-align:center">REGEN</div>
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.1em">NOM / RÔLE</div>
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.1em">PÉRIMÈTRE D'ACCÈS</div>
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;text-align:center">CODE SESSION</div>
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;text-align:center">MODIFIER</div>
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;text-align:center">REGEN</div>
     </div>
     ${users.map(u => `
-    <div style="display:grid;grid-template-columns:44px 1fr 1fr 120px 90px 90px;
-      align-items:center;gap:12px;padding:13px 16px;
-      border-bottom:1px solid var(--border);transition:background .12s;cursor:default"
-      onmouseenter="this.style.background='var(--surface2)'"
-      onmouseleave="this.style.background=''">
-      <div class="${u.avatarClass}" style="width:36px;height:36px;border-radius:4px;
-        display:flex;align-items:center;justify-content:center;
-        font-family:var(--font-display);font-size:13px;font-weight:700;flex-shrink:0">${u.init}</div>
+    <div style="display:grid;grid-template-columns:44px 1fr 1fr 120px 90px 90px;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--border);transition:background .12s;cursor:default"
+      onmouseenter="this.style.background='var(--surface2)'" onmouseleave="this.style.background=''">
+      <div class="${u.avatarClass}" style="width:36px;height:36px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-size:13px;font-weight:700;flex-shrink:0">${u.init}</div>
       <div>
         <div style="font-size:13px;font-weight:600;color:var(--text)">${u.name}</div>
-        <div style="font-family:var(--font-mono);font-size:9px;color:var(--text3);
-          margin-top:3px;text-transform:uppercase;letter-spacing:.08em">${u.role}</div>
+        <div style="font-family:var(--font-mono);font-size:9px;color:var(--text3);margin-top:3px;text-transform:uppercase;letter-spacing:.08em">${u.role}</div>
       </div>
       <div style="font-size:11.5px;font-weight:500;color:${scopeColors[u.id]||'var(--text3)'}">${scopeLabels[u.id]||u.role}</div>
       <div style="text-align:center">
-        <span style="font-family:var(--font-mono);font-size:13px;font-weight:700;
-          color:var(--accent);background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);
-          padding:5px 10px;border-radius:3px;letter-spacing:.18em;display:inline-block;
-          filter:blur(5px);cursor:pointer;transition:filter .2s;min-width:80px"
-          onclick="this.style.filter=this.style.filter?'':'blur(5px)'"
-          title="Cliquer pour révéler">${u.code}</span>
+        <span style="font-family:var(--font-mono);font-size:13px;font-weight:700;color:var(--accent);background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);padding:5px 10px;border-radius:3px;letter-spacing:.18em;display:inline-block;filter:blur(5px);cursor:pointer;transition:filter .2s;min-width:80px"
+          onclick="this.style.filter=this.style.filter?'':'blur(5px)'" title="Cliquer pour révéler">${u.code}</span>
       </div>
-      <div style="text-align:center">
-        <button class="btn btn-ghost btn-sm" onclick="openEditCode('${u.id}')"
-          style="width:80px">✎ Modifier</button>
-      </div>
-      <div style="text-align:center">
-        <button class="btn btn-ghost btn-sm" onclick="quickRegen('${u.id}')"
-          style="width:80px;color:var(--accent2);border-color:rgba(59,130,246,.4)">↺ Regen</button>
-      </div>
+      <div style="text-align:center"><button class="btn btn-ghost btn-sm" onclick="openEditCode('${u.id}')" style="width:80px">✎ Modifier</button></div>
+      <div style="text-align:center"><button class="btn btn-ghost btn-sm" onclick="quickRegen('${u.id}')" style="width:80px;color:var(--accent2);border-color:rgba(59,130,246,.4)">↺ Regen</button></div>
     </div>`).join('')}`;
 
-  const tbody = document.getElementById('loginLog');
-  const logData = getLog();
+  const tbody   = document.getElementById('loginLog');
+  const logData = await getLog();
   if (!logData.length) {
-    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text3);
-      padding:24px;font-family:var(--font-mono);font-size:11px">
-      Aucune activité enregistrée</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:24px;font-family:var(--font-mono);font-size:11px">Aucune activité enregistrée</td></tr>`;
     return;
   }
   tbody.innerHTML = logData.map(l => `<tr>
@@ -2569,12 +2602,12 @@ function renderAdminUsers() {
   </tr>`).join('');
 }
 
-function openEditCode(userId) {
-  const users = getUsers();
-  const user = users.find(u => u.id === userId);
+async function openEditCode(userId) {
+  const users = await getUsers();
+  const user  = users.find(u => u.id === userId);
   if (!user) return;
   editingUserId = userId;
-  codeVisible = false;
+  codeVisible   = false;
   document.getElementById('editUserName').textContent = user.name;
   document.getElementById('editUserRole').textContent = user.role;
   const av = document.getElementById('editUserAvatar');
@@ -2585,7 +2618,7 @@ function openEditCode(userId) {
   codeEl.textContent = '••••••';
   codeEl._real = user.code;
   document.getElementById('editNameInput').value = user.name;
-  document.getElementById('newCodeInput').value = '';
+  document.getElementById('newCodeInput').value  = '';
   document.getElementById('editCodeError').style.display = 'none';
   openModal('modalEditCode');
 }
@@ -2604,60 +2637,56 @@ function generateRandom() {
   document.getElementById('editCodeError').style.display = 'none';
 }
 
-function saveUserEdit() {
+async function saveUserEdit() {
   const newCode = document.getElementById('newCodeInput').value.trim().toUpperCase().replace(/[^A-Z0-9]/g,'');
   const newName = document.getElementById('editNameInput').value.trim();
-  if (newCode && newCode.length < 4) {
-    document.getElementById('editCodeError').style.display = 'block'; return;
-  }
-  const users = getUsers();
-  const user = users.find(u => u.id === editingUserId);
+  if (newCode && newCode.length < 4) { document.getElementById('editCodeError').style.display = 'block'; return; }
+  const users = await getUsers();
+  const user  = users.find(u => u.id === editingUserId);
   if (!user) return;
   const changes = [];
   if (newName && newName !== user.name) {
-    const old = user.name;
-    user.name = newName;
+    const old = user.name; user.name = newName;
     const parts = newName.split(' ').filter(Boolean);
     user.init = parts.length>=2 ? (parts[0][0]+parts[1][0]).toUpperCase() : newName.slice(0,2).toUpperCase();
     changes.push('Nom: "'+old+'" → "'+newName+'"');
   }
   if (newCode && newCode !== user.code) {
-    const old = user.code;
-    user.code = newCode;
+    const old = user.code; user.code = newCode;
     changes.push('Code: '+old+' → '+newCode);
   }
   if (!changes.length) { closeModal('modalEditCode'); showToast('Aucune modification'); return; }
-  saveUsers(users);
-  addLog({ user:currentUser.name, role:'Master Admin', action:'Modif. '+user.role+' — '+changes.join(' | '), result:'Admin' });
+  await saveUsers(users);
+  await addLog({ user:currentUser.name, role:'Master Admin', action:'Modif. '+user.role+' — '+changes.join(' | '), result:'Admin' });
   closeModal('modalEditCode');
   renderAdminUsers();
   showToast('✓ '+user.role+' mis à jour : '+user.name);
 }
-function saveNewCode() { saveUserEdit(); }
+async function saveNewCode() { await saveUserEdit(); }
 
-function quickRegen(userId) {
+async function quickRegen(userId) {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let c=''; for(let i=0;i<6;i++) c+=chars[Math.floor(Math.random()*chars.length)];
-  const users = getUsers();
-  const user = users.find(u=>u.id===userId);
+  const users = await getUsers();
+  const user  = users.find(u=>u.id===userId);
   if (!user) return;
   const old = user.code; user.code = c;
-  saveUsers(users);
-  addLog({ user:currentUser.name, role:'Master Admin', action:'Regen '+user.role+' — '+old+' → '+c, result:'Admin' });
+  await saveUsers(users);
+  await addLog({ user:currentUser.name, role:'Master Admin', action:'Regen '+user.role+' — '+old+' → '+c, result:'Admin' });
   renderAdminUsers();
   showToast('↺ Nouveau code '+user.role+' : '+c);
 }
 
-function regenerateAllCodes() {
+async function regenerateAllCodes() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  const users = getUsers();
+  const users = await getUsers();
   users.forEach(u => {
     if (u.id==='master') return;
     let c=''; for(let i=0;i<6;i++) c+=chars[Math.floor(Math.random()*chars.length)];
     u.code=c;
   });
-  saveUsers(users);
-  addLog({ user:currentUser.name, role:'Master Admin', action:'Régénération globale de tous les codes', result:'Admin' });
+  await saveUsers(users);
+  await addLog({ user:currentUser.name, role:'Master Admin', action:'Régénération globale de tous les codes', result:'Admin' });
   renderAdminUsers();
   showToast('↺ Tous les codes régénérés avec succès');
 }
@@ -2674,58 +2703,77 @@ const pageTitles = {
   coordination:   ['Dashboard Coordinateur',  'gmao / coordination'],
   rapports:       ['Rapports & Exports',       'gmao / rapports'],
   adminUsers:     ['Gestion Utilisateurs',     'gmao / admin / utilisateurs'],
-  historique:     ['Historique Global',          'gmao / historique'],
-  taches:         ['Mes Tâches & Demandes',      'gmao / workflow / tâches'],
+  historique:     ['Historique Global',        'gmao / historique'],
+  taches:         ['Mes Tâches & Demandes',    'gmao / workflow / tâches'],
 };
 
-// ═══ ENGINS GRID ═══
-function renderEngins(filter) {
-  const grid = document.getElementById('enginGrid');
-  const list = filter ? engins.filter(e => e.statut === filter) : engins;
-  grid.innerHTML = list.map(e => `
-    <div class="engin-card ${e.statut}" onclick="openModal('modalEnginDetail')">
-      <div class="engin-top">
-        <span class="engin-id">${e.id}</span>
-        <span class="badge ${e.statut==='dispo'?'badge-ok':e.statut==='panne'?'badge-danger':'badge-warn'}">
-          ${e.statut==='dispo'?'Disponible':e.statut==='panne'?'En panne':'Maintenance'}
-        </span>
-      </div>
-      <div class="engin-name">${e.name}</div>
-      <div class="engin-meta">${e.type}</div>
-      <div class="engin-meta" style="margin-top:6px">⏱ ${e.heures} &nbsp;|&nbsp; 📍 ${e.chantier}</div>
-    </div>
-  `).join('');
+// ═══ DONNÉES FIREBASE ═══
+
+const DEFAULT_ENGINS = [
+  { id:'ENG-001', name:'Niveleuse G140B',   type:'Niveleuse',         heures:'5 120 h', chantier:'CH-S2', statut:'dispo',       chassis:'NIV-001-2021', serie:'SN-2021-001', annee:'2021' },
+  { id:'ENG-003', name:'Pelle 320D',        type:'Pelle hydraulique', heures:'4 230 h', chantier:'CH-N3', statut:'maintenance', chassis:'CAT-320-2020', serie:'SN-2020-003', annee:'2020' },
+  { id:'ENG-005', name:'Niveleuse 140K',    type:'Niveleuse',         heures:'4 820 h', chantier:'Base',  statut:'dispo',       chassis:'NIV-005-2022', serie:'SN-2022-005', annee:'2022' },
+  { id:'ENG-007', name:'Bulldozer D6T',     type:'Bulldozer',         heures:'6 504 h', chantier:'CH-N3', statut:'panne',       chassis:'CAT-D6T-2019', serie:'SN-2019-007', annee:'2019' },
+  { id:'ENG-009', name:'Chargeuse 938H',    type:'Chargeuse',         heures:'3 870 h', chantier:'CH-S2', statut:'dispo',       chassis:'CAT-938-2021', serie:'SN-2021-009', annee:'2021' },
+  { id:'ENG-011', name:'Chargeuse 938K',    type:'Chargeuse',         heures:'3 410 h', chantier:'Base',  statut:'maintenance', chassis:'CAT-938K-2022', serie:'SN-2022-011', annee:'2022' },
+  { id:'ENG-012', name:'Pelle 320D',        type:'Pelle hydraulique', heures:'5 340 h', chantier:'CH-A1', statut:'panne',       chassis:'CAT-320-2019', serie:'SN-2019-012', annee:'2019' },
+  { id:'ENG-015', name:'Compacteur CB10',   type:'Compacteur',        heures:'2 910 h', chantier:'CH-N3', statut:'dispo',       chassis:'CB10-2022',    serie:'SN-2022-015', annee:'2022' },
+  { id:'ENG-017', name:'Grue LTM1060',      type:'Grue mobile',       heures:'1 890 h', chantier:'CH-A1', statut:'dispo',       chassis:'LTM-2023',     serie:'SN-2023-017', annee:'2023' },
+  { id:'ENG-019', name:'Compacteur 430E',   type:'Compacteur',        heures:'2 140 h', chantier:'Base',  statut:'panne',       chassis:'430E-2021',    serie:'SN-2021-019', annee:'2021' },
+  { id:'ENG-021', name:'Tractopelle 420F',  type:'Tractopelle',       heures:'2 650 h', chantier:'CH-K1', statut:'dispo',       chassis:'420F-2022',    serie:'SN-2022-021', annee:'2022' },
+  { id:'ENG-024', name:'Dumper 745C',       type:'Tombereau',         heures:'3 200 h', chantier:'CH-K1', statut:'maintenance', chassis:'745C-2020',    serie:'SN-2020-024', annee:'2020' },
+];
+
+const DEFAULT_INTERVENTIONS = [
+  { id:'INT-047', engin:'ENG-012 — Pelle 320D',    panne:'Circuit hydraulique',  section:'Mécanique',   tech:'Youssef', date:'14/01/2025', priorite:'Urgent', statut:'En cours',  pieces:'Tuyau hydraulique, Joint distributeur' },
+  { id:'INT-048', engin:'ENG-007 — Bulldozer D6T', panne:'Culasse fissurée',     section:'Mécanique',   tech:'Hassan',  date:'13/01/2025', priorite:'Urgent', statut:'Bloquée',   pieces:'Joint de culasse D6T' },
+  { id:'INT-045', engin:'ENG-003 — Pelle 320D',    panne:'Soudage bras',         section:'Soudage',     tech:'Karim',   date:'12/01/2025', priorite:'Normal', statut:'En cours',  pieces:'Électrodes, Fils de soudure' },
+  { id:'INT-044', engin:'ENG-019 — Compacteur',    panne:'Révision générale',    section:'Mécanique',   tech:'Amine',   date:'12/01/2025', priorite:'Normal', statut:'En cours',  pieces:'Filtres, Huile moteur' },
+  { id:'INT-043', engin:'ENG-011 — Chargeuse',     panne:'Remplacement pneus',   section:'Pneumatique', tech:'Omar',    date:'11/01/2025', priorite:'Faible', statut:'Terminée',  pieces:'4 pneus 23.5R25' },
+];
+
+const DEFAULT_STOCK = [
+  { ref:'FH-001', nom:'Filtre à huile moteur',     cat:'Filtration',  qte:0,  seuil:5,  unite:'Pcs',    prix:85,  fourn:'Autoparts Casablanca' },
+  { ref:'JC-003', nom:'Joint de culasse D6T',      cat:'Joints',      qte:2,  seuil:5,  unite:'Pcs',    prix:320, fourn:'CAT Maroc' },
+  { ref:'HU-005', nom:'Huile moteur 15W40',        cat:'Lubrifiants', qte:48, seuil:20, unite:'Litres', prix:28,  fourn:'Afriquia Lubricants' },
+  { ref:'PC-012', nom:'Plaquettes de frein',       cat:'Freinage',    qte:12, seuil:8,  unite:'Jeux',   prix:240, fourn:'Frein-Auto Maroc' },
+  { ref:'FC-007', nom:'Filtre carburant',          cat:'Filtration',  qte:6,  seuil:8,  unite:'Pcs',    prix:95,  fourn:'Autoparts Casablanca' },
+  { ref:'RL-002', nom:'Roulement à billes 6205',  cat:'Roulements',  qte:24, seuil:10, unite:'Pcs',    prix:65,  fourn:'SKF Maroc' },
+  { ref:'TS-009', nom:'Tuyau souple hydraulique', cat:'Hydraulique', qte:8,  seuil:5,  unite:'Mètres', prix:185, fourn:'Parker Maroc' },
+];
+
+let _enginsCache = null;
+async function getEngins() {
+  if (_enginsCache) return _enginsCache;
+  _enginsCache = await fsGetMain('gmao_engins', DEFAULT_ENGINS);
+  return _enginsCache;
 }
-function filterEngins(val) { renderEngins(val); }
+async function saveEngins(list) { _enginsCache = list; await fsSetMain('gmao_engins', list); }
 
-// ═══ MODALS ═══
-function openModal(id) { document.getElementById(id)?.classList.add('open'); }
-function closeModal(id) { document.getElementById(id)?.classList.remove('open'); }
-document.querySelectorAll('.modal-overlay').forEach(o => {
-  o.addEventListener('click', e => { if (e.target === o) o.classList.remove('open'); });
-});
-
-// ═══ NOTIFICATIONS ═══
-const notifPanel = document.getElementById('notifPanel');
-function toggleNotif() { notifPanel.classList.toggle('open'); }
-
-// ═══ SECTION FILTER ═══
-function filterSection(section, el) {
-  document.querySelectorAll('.section-chips .chip').forEach(c => c.classList.remove('active'));
-  el.classList.add('active');
-  showToast('Filtrage : ' + el.textContent.trim());
+let _interCache = null;
+async function getInterventions() {
+  if (_interCache) return _interCache;
+  _interCache = await fsGetMain('gmao_interventions', DEFAULT_INTERVENTIONS);
+  return _interCache;
 }
+async function saveInterventions(list) { _interCache = list; await fsSetMain('gmao_interventions', list); }
 
-// ═══════════════════════════════════════════════
-// HISTORIQUE GLOBAL — SYSTÈME COMPLET
-// ═══════════════════════════════════════════════
-
-function getHistory() {
-  return JSON.parse(localStorage.getItem('gmao_history') || '[]');
+let _stockCache = null;
+async function getStockItems() {
+  if (_stockCache) return _stockCache;
+  _stockCache = await fsGetMain('gmao_stock', DEFAULT_STOCK);
+  return _stockCache;
 }
+async function saveStock(list) { _stockCache = list; await fsSetMain('gmao_stock', list); }
 
-function addHistory(entry) {
-  const h = getHistory();
+let _histCache = null;
+async function getHistory() {
+  if (_histCache) return _histCache;
+  _histCache = await fsGetMain('gmao_history', []);
+  return _histCache;
+}
+async function addHistory(entry) {
+  const h = await getHistory();
   h.unshift({
     id: 'H' + Date.now(),
     date: new Date().toLocaleString('fr-FR'),
@@ -2733,65 +2781,39 @@ function addHistory(entry) {
     role: currentUser ? currentUser.role : '—',
     module: entry.module || '—',
     action: entry.action || '—',
-    cible: entry.cible || '—',
-    avant: entry.avant || '—',
-    apres: entry.apres || '—',
+    cible:  entry.cible  || '—',
+    avant:  entry.avant  || '—',
+    apres:  entry.apres  || '—',
     details: entry.details || ''
   });
   if (h.length > 500) h.pop();
-  localStorage.setItem('gmao_history', JSON.stringify(h));
+  _histCache = h;
+  await fsSetMain('gmao_history', h);
 }
 
-// ═══ DONNÉES EDITABLES EN localStorage ═══
-function getEngins() {
-  const stored = localStorage.getItem('gmao_engins');
-  return stored ? JSON.parse(stored) : [
-    { id:'ENG-001', name:'Niveleuse G140B',   type:'Niveleuse',        heures:'5 120 h', chantier:'CH-S2', statut:'dispo',       chassis:'NIV-001-2021', serie:'SN-2021-001', annee:'2021' },
-    { id:'ENG-003', name:'Pelle 320D',        type:'Pelle hydraulique', heures:'4 230 h', chantier:'CH-N3', statut:'maintenance', chassis:'CAT-320-2020', serie:'SN-2020-003', annee:'2020' },
-    { id:'ENG-005', name:'Niveleuse 140K',    type:'Niveleuse',        heures:'4 820 h', chantier:'Base',  statut:'dispo',       chassis:'NIV-005-2022', serie:'SN-2022-005', annee:'2022' },
-    { id:'ENG-007', name:'Bulldozer D6T',     type:'Bulldozer',        heures:'6 504 h', chantier:'CH-N3', statut:'panne',       chassis:'CAT-D6T-2019', serie:'SN-2019-007', annee:'2019' },
-    { id:'ENG-009', name:'Chargeuse 938H',    type:'Chargeuse',        heures:'3 870 h', chantier:'CH-S2', statut:'dispo',       chassis:'CAT-938-2021', serie:'SN-2021-009', annee:'2021' },
-    { id:'ENG-011', name:'Chargeuse 938K',    type:'Chargeuse',        heures:'3 410 h', chantier:'Base',  statut:'maintenance', chassis:'CAT-938K-2022', serie:'SN-2022-011', annee:'2022' },
-    { id:'ENG-012', name:'Pelle 320D',        type:'Pelle hydraulique', heures:'5 340 h', chantier:'CH-A1', statut:'panne',       chassis:'CAT-320-2019', serie:'SN-2019-012', annee:'2019' },
-    { id:'ENG-015', name:'Compacteur CB10',   type:'Compacteur',       heures:'2 910 h', chantier:'CH-N3', statut:'dispo',       chassis:'CB10-2022',    serie:'SN-2022-015', annee:'2022' },
-    { id:'ENG-017', name:'Grue LTM1060',      type:'Grue mobile',      heures:'1 890 h', chantier:'CH-A1', statut:'dispo',       chassis:'LTM-2023',     serie:'SN-2023-017', annee:'2023' },
-    { id:'ENG-019', name:'Compacteur 430E',   type:'Compacteur',       heures:'2 140 h', chantier:'Base',  statut:'panne',       chassis:'430E-2021',    serie:'SN-2021-019', annee:'2021' },
-    { id:'ENG-021', name:'Tractopelle 420F',  type:'Tractopelle',      heures:'2 650 h', chantier:'CH-K1', statut:'dispo',       chassis:'420F-2022',    serie:'SN-2022-021', annee:'2022' },
-    { id:'ENG-024', name:'Dumper 745C',       type:'Tombereau',        heures:'3 200 h', chantier:'CH-K1', statut:'maintenance', chassis:'745C-2020',    serie:'SN-2020-024', annee:'2020' },
-  ];
+let _tachesCache = null;
+async function getTaches() {
+  if (_tachesCache) return _tachesCache;
+  _tachesCache = await fsGetMain('gmao_taches', []);
+  return _tachesCache;
 }
-function saveEngins(list) { localStorage.setItem('gmao_engins', JSON.stringify(list)); }
+async function saveTaches(list) { _tachesCache = list; await fsSetMain('gmao_taches', list); }
 
-function getInterventions() {
-  const stored = localStorage.getItem('gmao_interventions');
-  return stored ? JSON.parse(stored) : [
-    { id:'INT-047', engin:'ENG-012 — Pelle 320D',    panne:'Circuit hydraulique',  section:'Mécanique',   tech:'Youssef', date:'14/01/2025', priorite:'Urgent', statut:'En cours',  pieces:'Tuyau hydraulique, Joint distributeur' },
-    { id:'INT-048', engin:'ENG-007 — Bulldozer D6T', panne:'Culasse fissurée',     section:'Mécanique',   tech:'Hassan',  date:'13/01/2025', priorite:'Urgent', statut:'Bloquée',   pieces:'Joint de culasse D6T' },
-    { id:'INT-045', engin:'ENG-003 — Pelle 320D',    panne:'Soudage bras',         section:'Soudage',     tech:'Karim',   date:'12/01/2025', priorite:'Normal', statut:'En cours',  pieces:'Électrodes, Fils de soudure' },
-    { id:'INT-044', engin:'ENG-019 — Compacteur',    panne:'Révision générale',    section:'Mécanique',   tech:'Amine',   date:'12/01/2025', priorite:'Normal', statut:'En cours',  pieces:'Filtres, Huile moteur' },
-    { id:'INT-043', engin:'ENG-011 — Chargeuse',     panne:'Remplacement pneus',   section:'Pneumatique', tech:'Omar',    date:'11/01/2025', priorite:'Faible', statut:'Terminée',  pieces:'4 pneus 23.5R25' },
-  ];
+async function nextTaskId() {
+  const list = await getTaches();
+  const nums = list.map(t => parseInt((t.id||'').split('-')[1]||'0')).filter(n => !isNaN(n));
+  return 'TSK-' + String((Math.max(0, ...nums) || 0) + 1).padStart(4, '0');
 }
-function saveInterventions(list) { localStorage.setItem('gmao_interventions', JSON.stringify(list)); }
 
-function getStockItems() {
-  const stored = localStorage.getItem('gmao_stock');
-  return stored ? JSON.parse(stored) : [
-    { ref:'FH-001', nom:'Filtre à huile moteur',      cat:'Filtration',  qte:0,  seuil:5,  unite:'Pcs',    prix:85,  fourn:'Autoparts Casablanca' },
-    { ref:'JC-003', nom:'Joint de culasse D6T',       cat:'Joints',      qte:2,  seuil:5,  unite:'Pcs',    prix:320, fourn:'CAT Maroc' },
-    { ref:'HU-005', nom:'Huile moteur 15W40',         cat:'Lubrifiants', qte:48, seuil:20, unite:'Litres', prix:28,  fourn:'Afriquia Lubricants' },
-    { ref:'PC-012', nom:'Plaquettes de frein',        cat:'Freinage',    qte:12, seuil:8,  unite:'Jeux',   prix:240, fourn:'Frein-Auto Maroc' },
-    { ref:'FC-007', nom:'Filtre carburant',           cat:'Filtration',  qte:6,  seuil:8,  unite:'Pcs',    prix:95,  fourn:'Autoparts Casablanca' },
-    { ref:'RL-002', nom:'Roulement à billes 6205',   cat:'Roulements',  qte:24, seuil:10, unite:'Pcs',    prix:65,  fourn:'SKF Maroc' },
-    { ref:'TS-009', nom:'Tuyau souple hydraulique',  cat:'Hydraulique', qte:8,  seuil:5,  unite:'Mètres', prix:185, fourn:'Parker Maroc' },
-  ];
+async function findUserById(id) {
+  const users = await getUsers();
+  return users.find(u => u.id === id);
 }
-function saveStock(list) { localStorage.setItem('gmao_stock', JSON.stringify(list)); }
 
-// ═══ ENGINS GRID (dynamic) ═══
-function renderEngins(filter) {
+// ═══ ENGINS GRID ═══
+async function renderEngins(filter) {
   const grid = document.getElementById('enginGrid');
-  const allEngins = getEngins();
+  const allEngins = await getEngins();
   const list = filter ? allEngins.filter(e => e.statut === filter) : allEngins;
   const canEdit = currentUser && ['master','chef_parc','coordinateur'].includes(currentUser.id);
   grid.innerHTML = list.map(e => `
@@ -2815,30 +2837,29 @@ function renderEngins(filter) {
       </div>` : ''}
     </div>`).join('');
 }
-function filterEngins(val) { renderEngins(val); }
+async function filterEngins(val) { await renderEngins(val); }
 
-// ═══ EDIT ENGIN ═══
 let editingEnginId = null;
-function openEditEngin(id) {
-  const eng = getEngins().find(e => e.id === id);
+async function openEditEngin(id) {
+  const eng = (await getEngins()).find(e => e.id === id);
   if (!eng) return;
   editingEnginId = id;
-  document.getElementById('eeId').value = eng.id;
-  document.getElementById('eeName').value = eng.name;
-  document.getElementById('eeType').value = eng.type;
+  document.getElementById('eeId').value      = eng.id;
+  document.getElementById('eeName').value    = eng.name;
+  document.getElementById('eeType').value    = eng.type;
   document.getElementById('eeChassis').value = eng.chassis||'';
-  document.getElementById('eeSerie').value = eng.serie||'';
-  document.getElementById('eeAnnee').value = eng.annee||'';
-  document.getElementById('eeHeures').value = eng.heures||'';
-  document.getElementById('eeChantier').value = eng.chantier||'';
-  document.getElementById('eeStatut').value = eng.statut||'dispo';
+  document.getElementById('eeSerie').value   = eng.serie||'';
+  document.getElementById('eeAnnee').value   = eng.annee||'';
+  document.getElementById('eeHeures').value  = eng.heures||'';
+  document.getElementById('eeChantier').value= eng.chantier||'';
+  document.getElementById('eeStatut').value  = eng.statut||'dispo';
   openModal('modalEditEngin');
 }
-function saveEditEngin() {
-  const engs = getEngins();
-  const idx = engs.findIndex(e => e.id === editingEnginId);
+async function saveEditEngin() {
+  const engs = await getEngins();
+  const idx  = engs.findIndex(e => e.id === editingEnginId);
   if (idx < 0) return;
-  const old = {...engs[idx]};
+  const old     = {...engs[idx]};
   const updated = {
     ...old,
     name:    document.getElementById('eeName').value.trim(),
@@ -2850,32 +2871,32 @@ function saveEditEngin() {
     chantier:document.getElementById('eeChantier').value.trim(),
     statut:  document.getElementById('eeStatut').value,
   };
-  const changes = Object.keys(updated).filter(k => updated[k] !== old[k]).map(k => k+': "'+old[k]+'" → "'+updated[k]+'"').join(', ');
+  const changes = Object.keys(updated).filter(k=>updated[k]!==old[k]).map(k=>k+':"'+old[k]+'"→"'+updated[k]+'"').join(', ');
   engs[idx] = updated;
-  saveEngins(engs);
-  if (changes) addHistory({ module:'Parc Engins', action:'Modification fiche engin', cible:old.id+' — '+old.name, avant:JSON.stringify(old), apres:JSON.stringify(updated), details:changes });
+  await saveEngins(engs);
+  if (changes) await addHistory({ module:'Parc Engins', action:'Modification fiche engin', cible:old.id+' — '+old.name, avant:JSON.stringify(old), apres:JSON.stringify(updated), details:changes });
   closeModal('modalEditEngin');
   renderEngins('');
   showToast('✓ Fiche engin '+updated.id+' mise à jour');
 }
-function changeEnginStatut(id, newStatut) {
-  const engs = getEngins();
-  const eng = engs.find(e => e.id === id);
+async function changeEnginStatut(id, newStatut) {
+  const engs = await getEngins();
+  const eng  = engs.find(e => e.id === id);
   if (!eng) return;
   const old = eng.statut;
   if (old === newStatut) return;
   eng.statut = newStatut;
-  saveEngins(engs);
-  addHistory({ module:'Parc Engins', action:'Changement statut', cible:eng.id+' — '+eng.name, avant:old, apres:newStatut });
+  await saveEngins(engs);
+  await addHistory({ module:'Parc Engins', action:'Changement statut', cible:eng.id+' — '+eng.name, avant:old, apres:newStatut });
   renderEngins('');
   showToast('✓ Statut '+eng.id+' → '+newStatut);
 }
 
-// ═══ INTERVENTIONS (dynamic) ═══
-function renderInterventions() {
-  const list = getInterventions();
+// ═══ INTERVENTIONS ═══
+async function renderInterventions() {
+  const list    = await getInterventions();
   const canEdit = currentUser && ['master','chef_atelier','coordinateur'].includes(currentUser.id);
-  const tbody = document.getElementById('interventionTable');
+  const tbody   = document.getElementById('interventionTable');
   if (!tbody) return;
   tbody.innerHTML = list.map(i => `<tr>
     <td class="mono">${i.id}</td>
@@ -2896,61 +2917,63 @@ function renderInterventions() {
     <td>${canEdit ? `<button class="btn btn-ghost btn-sm" onclick="openEditOT('${i.id}')">✎ Fiche</button>` : `<button class="btn btn-ghost btn-sm" onclick="openEditOT('${i.id}')">Voir</button>`}</td>
   </tr>`).join('');
 }
-function changeOTStatut(id, newStatut) {
-  const list = getInterventions();
-  const ot = list.find(i => i.id === id);
+
+async function changeOTStatut(id, newStatut) {
+  const list = await getInterventions();
+  const ot   = list.find(i => i.id === id);
   if (!ot) return;
   const old = ot.statut;
   if (old === newStatut) return;
   ot.statut = newStatut;
-  saveInterventions(list);
-  addHistory({ module:'Atelier — Interventions', action:'Changement statut OT', cible:ot.id+' — '+ot.engin, avant:old, apres:newStatut });
+  await saveInterventions(list);
+  await addHistory({ module:'Atelier — Interventions', action:'Changement statut OT', cible:ot.id+' — '+ot.engin, avant:old, apres:newStatut });
   showToast('✓ OT '+id+' → '+newStatut);
 }
+
 let editingOTId = null;
-function openEditOT(id) {
-  const list = getInterventions();
-  const ot = list.find(i => i.id === id);
+async function openEditOT(id) {
+  const list = await getInterventions();
+  const ot   = list.find(i => i.id === id);
   if (!ot) return;
   editingOTId = id;
   const canEdit = currentUser && ['master','chef_atelier','coordinateur'].includes(currentUser.id);
-  document.getElementById('otId').textContent = ot.id;
-  document.getElementById('otEngin').textContent = ot.engin;
+  document.getElementById('otId').textContent      = ot.id;
+  document.getElementById('otEngin').textContent   = ot.engin;
   document.getElementById('otSection').textContent = ot.section;
-  document.getElementById('otTech').textContent = ot.tech;
-  document.getElementById('otDate').textContent = ot.date;
-  document.getElementById('otPanne').textContent = ot.panne;
-  document.getElementById('otPieces').textContent = ot.pieces||'—';
+  document.getElementById('otTech').textContent    = ot.tech;
+  document.getElementById('otDate').textContent    = ot.date;
+  document.getElementById('otPanne').textContent   = ot.panne;
+  document.getElementById('otPieces').textContent  = ot.pieces||'—';
   const st = document.getElementById('otStatutEdit');
-  st.value = ot.statut;
+  st.value    = ot.statut;
   st.disabled = !canEdit;
   const saveBtn = document.getElementById('otSaveBtn');
   if (saveBtn) saveBtn.style.display = canEdit ? '' : 'none';
   openModal('modalFicheIntervention');
 }
-function saveOTEdit() {
-  const list = getInterventions();
-  const ot = list.find(i => i.id === editingOTId);
+async function saveOTEdit() {
+  const list = await getInterventions();
+  const ot   = list.find(i => i.id === editingOTId);
   if (!ot) return;
   const newStatut = document.getElementById('otStatutEdit').value;
-  const newObs = document.getElementById('otObsEdit').value.trim();
+  const newObs    = document.getElementById('otObsEdit').value.trim();
   const old = ot.statut;
   if (newStatut !== old || newObs) {
     ot.statut = newStatut;
     if (newObs) ot.observations = (ot.observations||'') + '\n['+new Date().toLocaleString('fr-FR')+' — '+currentUser.name+'] '+newObs;
-    saveInterventions(list);
-    addHistory({ module:'Atelier — Interventions', action:'Mise à jour OT', cible:ot.id+' — '+ot.engin, avant:'Statut: '+old, apres:'Statut: '+newStatut+(newObs?' | Obs: '+newObs:''), details:ot.observations||'' });
+    await saveInterventions(list);
+    await addHistory({ module:'Atelier — Interventions', action:'Mise à jour OT', cible:ot.id+' — '+ot.engin, avant:'Statut: '+old, apres:'Statut: '+newStatut+(newObs?' | Obs: '+newObs:'') });
   }
   closeModal('modalFicheIntervention');
   renderInterventions();
   showToast('✓ OT '+editingOTId+' mis à jour');
 }
 
-// ═══ STOCK (dynamic) ═══
-function renderStock() {
-  const list = getStockItems();
+// ═══ STOCK ═══
+async function renderStock() {
+  const list    = await getStockItems();
   const canEdit = currentUser && ['master','magasinier','coordinateur'].includes(currentUser.id);
-  const tbody = document.getElementById('stockTable');
+  const tbody   = document.getElementById('stockTable');
   if (!tbody) return;
   tbody.innerHTML = list.map(s => {
     const st = s.qte <= 0 ? 'Rupture' : s.qte <= s.seuil ? (s.qte <= s.seuil*0.5 ? 'Critique' : 'Bas') : 'OK';
@@ -2969,26 +2992,27 @@ function renderStock() {
     </tr>`;
   }).join('');
 }
+
 let editingStockRef = null;
-function openEditStock(ref) {
-  const s = getStockItems().find(i => i.ref === ref);
+async function openEditStock(ref) {
+  const s = (await getStockItems()).find(i => i.ref === ref);
   if (!s) return;
   editingStockRef = ref;
-  document.getElementById('esRef').value = s.ref;
-  document.getElementById('esNom').value = s.nom;
-  document.getElementById('esCat').value = s.cat;
-  document.getElementById('esQte').value = s.qte;
+  document.getElementById('esRef').value   = s.ref;
+  document.getElementById('esNom').value   = s.nom;
+  document.getElementById('esCat').value   = s.cat;
+  document.getElementById('esQte').value   = s.qte;
   document.getElementById('esSeuil').value = s.seuil;
   document.getElementById('esUnite').value = s.unite;
-  document.getElementById('esPrix').value = s.prix;
+  document.getElementById('esPrix').value  = s.prix;
   document.getElementById('esFourn').value = s.fourn;
   openModal('modalEditStock');
 }
-function saveEditStock() {
-  const list = getStockItems();
-  const idx = list.findIndex(i => i.ref === editingStockRef);
+async function saveEditStock() {
+  const list = await getStockItems();
+  const idx  = list.findIndex(i => i.ref === editingStockRef);
   if (idx < 0) return;
-  const old = {...list[idx]};
+  const old     = {...list[idx]};
   const updated = {
     ref:   document.getElementById('esRef').value.trim(),
     nom:   document.getElementById('esNom').value.trim(),
@@ -3000,16 +3024,15 @@ function saveEditStock() {
     fourn: document.getElementById('esFourn').value.trim(),
   };
   list[idx] = updated;
-  saveStock(list);
-  const changes = Object.keys(updated).filter(k=>updated[k]!==old[k]).map(k=>k+': "'+old[k]+'" → "'+updated[k]+'"').join(', ');
-  addHistory({ module:'Stock & Magasin', action:'Modification pièce', cible:old.ref+' — '+old.nom, avant:'Qté:'+old.qte+' | Prix:'+old.prix+' MAD', apres:'Qté:'+updated.qte+' | Prix:'+updated.prix+' MAD', details:changes });
+  await saveStock(list);
+  const changes = Object.keys(updated).filter(k=>updated[k]!==old[k]).map(k=>k+':"'+old[k]+'"→"'+updated[k]+'"').join(', ');
+  await addHistory({ module:'Stock & Magasin', action:'Modification pièce', cible:old.ref+' — '+old.nom, avant:'Qté:'+old.qte+' | Prix:'+old.prix+' MAD', apres:'Qté:'+updated.qte+' | Prix:'+updated.prix+' MAD', details:changes });
   closeModal('modalEditStock');
   renderStock();
   showToast('✓ Pièce '+updated.ref+' mise à jour');
 }
 
-// ═══ ENTRÉE STOCK ═══
-function saveEntreeStock() {
+async function saveEntreeStock() {
   const ref   = document.getElementById('esRefIn').value.trim().toUpperCase();
   const nom   = document.getElementById('esNomIn').value.trim();
   const cat   = document.getElementById('esCatIn').value;
@@ -3019,117 +3042,104 @@ function saveEntreeStock() {
   const prix  = parseFloat(document.getElementById('esPrixIn').value)||0;
   const fourn = document.getElementById('esFournIn').value.trim();
   if (!ref || !nom) { showToast('⚠ Référence et désignation requis'); return; }
-  const list = getStockItems();
+  const list     = await getStockItems();
   const existing = list.find(i => i.ref === ref);
   if (existing) {
     const oldQte = existing.qte;
     existing.qte += qte;
-    saveStock(list);
-    addHistory({ module:'Stock & Magasin', action:'Entrée stock', cible:ref+' — '+existing.nom, avant:'Qté: '+oldQte, apres:'Qté: '+existing.qte, details:'+'+qte+' '+unite+' | Fournisseur: '+fourn });
+    await saveStock(list);
+    await addHistory({ module:'Stock & Magasin', action:'Entrée stock', cible:ref+' — '+existing.nom, avant:'Qté: '+oldQte, apres:'Qté: '+existing.qte, details:'+'+qte+' '+unite+' | Fournisseur: '+fourn });
     showToast('✓ Entrée stock — '+ref+' : +'+qte+' '+unite);
   } else {
     list.push({ ref, nom, cat, qte, seuil, unite, prix, fourn });
-    saveStock(list);
-    addHistory({ module:'Stock & Magasin', action:'Nouvelle pièce en stock', cible:ref+' — '+nom, avant:'—', apres:'Qté: '+qte+' | Prix: '+prix+' MAD', details:'Fournisseur: '+fourn });
+    await saveStock(list);
+    await addHistory({ module:'Stock & Magasin', action:'Nouvelle pièce en stock', cible:ref+' — '+nom, avant:'—', apres:'Qté: '+qte+' | Prix: '+prix+' MAD', details:'Fournisseur: '+fourn });
     showToast('✓ Nouvelle pièce créée : '+ref);
   }
   closeModal('modalPiece');
   renderStock();
 }
 
-// ═══ SORTIE STOCK ═══
-function saveSortieStock() {
-  const ref  = document.getElementById('soPieceRef').value;
-  const qte  = parseInt(document.getElementById('soQte').value)||0;
-  const ot   = document.getElementById('soOT').value;
-  const motif= document.getElementById('soMotif').value.trim();
+async function saveSortieStock() {
+  const ref   = document.getElementById('soPieceRef').value;
+  const qte   = parseInt(document.getElementById('soQte').value)||0;
+  const ot    = document.getElementById('soOT').value;
+  const motif = document.getElementById('soMotif').value.trim();
   if (!ref || qte <= 0) { showToast('⚠ Sélectionnez une pièce et une quantité'); return; }
-  const list = getStockItems();
+  const list = await getStockItems();
   const item = list.find(i => i.ref === ref);
   if (!item) { showToast('⚠ Pièce introuvable'); return; }
   if (item.qte < qte) { showToast('⚠ Stock insuffisant ('+item.qte+' disponible)'); return; }
   const oldQte = item.qte;
   item.qte -= qte;
-  saveStock(list);
-  addHistory({ module:'Stock & Magasin', action:'Sortie stock', cible:ref+' — '+item.nom, avant:'Qté: '+oldQte, apres:'Qté: '+item.qte, details:'-'+qte+' '+item.unite+' | OT: '+ot+' | Motif: '+motif });
+  await saveStock(list);
+  await addHistory({ module:'Stock & Magasin', action:'Sortie stock', cible:ref+' — '+item.nom, avant:'Qté: '+oldQte, apres:'Qté: '+item.qte, details:'-'+qte+' '+item.unite+' | OT: '+ot+' | Motif: '+motif });
   closeModal('modalSortieStock');
   renderStock();
   showToast('✓ Sortie stock — '+ref+' : -'+qte+' '+item.unite);
 }
 
-// ═══ SAVE ACTIONS ═══
-function saveEngin() {
-  const id = document.getElementById('newEnginId').value.trim().toUpperCase() || 'ENG-'+(Date.now()%10000);
+async function saveEngin() {
+  const id   = document.getElementById('newEnginId').value.trim().toUpperCase() || 'ENG-'+(Date.now()%10000);
   const name = document.getElementById('newEnginName').value.trim();
   if (!name) { showToast('⚠ Modèle requis'); return; }
- async function saveEngin() {
-  const id = document.getElementById('newEnginId').value.trim().toUpperCase() || 'ENG-'+(Date.now()%10000);
-  const name = document.getElementById('newEnginName').value.trim();
-  if (!name) { showToast('⚠ Modèle requis'); return; }
-
+  const engs   = await getEngins();
   const newEng = {
     id, name,
-    type: document.getElementById('newEnginType').value.trim(),
+    type:    document.getElementById('newEnginType').value.trim(),
     chassis: document.getElementById('newEnginChassis').value.trim(),
-    serie: document.getElementById('newEnginSerie').value.trim(),
-    annee: document.getElementById('newEnginAnnee').value.trim(),
-    heures: document.getElementById('newEnginHeures').value.trim() || '0 h',
-    chantier: document.getElementById('newEnginChantier').value.trim() || 'Base',
-    statut: document.getElementById('newEnginStatut').value || 'dispo',
-    createdAt: new Date()
+    serie:   document.getElementById('newEnginSerie').value.trim(),
+    annee:   document.getElementById('newEnginAnnee').value.trim(),
+    heures:  document.getElementById('newEnginHeures').value.trim() || '0 h',
+    chantier:document.getElementById('newEnginChantier').value.trim() || 'Base',
+    statut:  document.getElementById('newEnginStatut').value || 'dispo',
   };
-
-  try {
-    await addDoc(collection(db, "engins"), newEng);
-    showToast('✓ Engin ajouté (Firebase)');
-  } catch (e) {
-    console.error(e);
-    showToast('❌ Erreur Firebase');
-  }
-
-  closeModal('modalEngin');
-}
-  addHistory({ module:'Parc Engins', action:'Nouvel engin créé', cible:id+' — '+name, avant:'—', apres:'Statut: '+newEng.statut+' | Heures: '+newEng.heures });
+  engs.push(newEng);
+  await saveEngins(engs);
+  await addHistory({ module:'Parc Engins', action:'Nouvel engin créé', cible:id+' — '+name, avant:'—', apres:'Statut: '+newEng.statut+' | Heures: '+newEng.heures });
   closeModal('modalEngin');
   renderEngins('');
   showToast('✓ Engin '+id+' enregistré');
 }
-function saveIntervention() {
-  const engin = document.getElementById('otNewEngin').value;
-  const panne = document.getElementById('otNewPanne').value.trim();
-  const section = document.getElementById('otNewSection').value;
-  const tech = document.getElementById('otNewTech').value;
+
+async function saveIntervention() {
+  const engin    = document.getElementById('otNewEngin').value;
+  const panne    = document.getElementById('otNewPanne').value.trim();
+  const section  = document.getElementById('otNewSection').value;
+  const tech     = document.getElementById('otNewTech').value;
   const priorite = document.getElementById('otNewPriorite').value;
   if (!panne) { showToast('⚠ Description panne requise'); return; }
-  const list = getInterventions();
-  const id = 'INT-' + (parseInt(list[0]?.id?.split('-')[1]||'050')+1);
+  const list = await getInterventions();
+  const id   = 'INT-' + (parseInt(list[0]?.id?.split('-')[1]||'050')+1);
   const newOT = { id, engin, panne, section, tech, date:new Date().toLocaleDateString('fr-FR'), priorite, statut:'En cours', pieces:document.getElementById('otNewPieces').value.trim() };
   list.unshift(newOT);
-  saveInterventions(list);
-  addHistory({ module:'Atelier — Interventions', action:'Nouvel OT créé', cible:id+' — '+engin, avant:'—', apres:'Section: '+section+' | Priorité: '+priorite+' | Tech: '+tech });
+  await saveInterventions(list);
+  await addHistory({ module:'Atelier — Interventions', action:'Nouvel OT créé', cible:id+' — '+engin, avant:'—', apres:'Section: '+section+' | Priorité: '+priorite+' | Tech: '+tech });
   closeModal('modalIntervention');
   renderInterventions();
   showToast('✓ OT '+id+' créé');
 }
-function savePiece() { saveEntreeStock(); }
-function closeSortie() { saveSortieStock(); }
-function validTransfert(btn) {
+
+async function savePiece() { await saveEntreeStock(); }
+async function closeSortie() { await saveSortieStock(); }
+
+async function validTransfert(btn) {
   btn.textContent='✓ Validé'; btn.className='btn btn-success btn-sm'; btn.style.opacity='.6'; btn.disabled=true;
-  addHistory({ module:'Coordination', action:'Transfert pièce validé', cible:'—', avant:'En attente', apres:'Validé', details:'Par: '+currentUser.name });
+  await addHistory({ module:'Coordination', action:'Transfert pièce validé', cible:'—', avant:'En attente', apres:'Validé', details:'Par: '+currentUser.name });
   showToast('✓ Transfert validé');
 }
+
 function viewChantier(id) { showToast('Chantier '+id+' — Détail...'); }
 
-// ═══ HISTORIQUE PAGE ═══
-function renderHistorique(filter) {
-  const all = getHistory();
+// ═══ HISTORIQUE ═══
+async function renderHistorique(filter) {
+  const all      = await getHistory();
   const filtered = filter ? all.filter(h =>
     h.module.toLowerCase().includes(filter.toLowerCase()) ||
     h.action.toLowerCase().includes(filter.toLowerCase()) ||
-    h.cible.toLowerCase().includes(filter.toLowerCase()) ||
+    h.cible.toLowerCase().includes(filter.toLowerCase())  ||
     h.user.toLowerCase().includes(filter.toLowerCase())
   ) : all;
-
   const tbody = document.getElementById('histTable');
   if (!tbody) return;
   if (!filtered.length) {
@@ -3154,10 +3164,10 @@ function renderHistorique(filter) {
   document.getElementById('histCount').textContent = filtered.length + ' entrée(s)';
 }
 
-function exportHistorique() {
-  const all = getHistory();
+async function exportHistorique() {
+  const all = await getHistory();
   if (!all.length) { showToast('⚠ Aucun historique à exporter'); return; }
-  const wb = XLSX.utils.book_new();
+  const wb   = XLSX.utils.book_new();
   const rows = [['ID','Date','Utilisateur','Rôle','Module','Action','Cible','Avant','Après','Détails']];
   all.forEach(h => rows.push([h.id, h.date, h.user, h.role, h.module, h.action, h.cible, h.avant, h.apres, h.details||'']));
   const ws = XLSX.utils.aoa_to_sheet(rows);
@@ -3167,41 +3177,34 @@ function exportHistorique() {
   showToast('✓ Historique exporté ('+all.length+' entrées)');
 }
 
-function clearHistorique() {
+async function clearHistorique() {
   if (!confirm('Effacer tout l\'historique ? Cette action est irréversible.')) return;
-  localStorage.removeItem('gmao_history');
+  _histCache = [];
+  await fsSetMain('gmao_history', []);
   renderHistorique('');
   showToast('Historique effacé');
 }
 
-// ═══ RAPPORT ═══
-function generateRapport() {
-  showToast('⬡ Génération du rapport en cours...');
-  setTimeout(() => { document.getElementById('rapportPreview').style.display='block'; showToast('✓ Rapport généré'); }, 800);
-}
-
-// ═══ EXPORTS XLSX ═══
-function exportXLSX() {
-  const wb = XLSX.utils.book_new();
+async function exportXLSX() {
+  const wb   = XLSX.utils.book_new();
   const date = new Date().toISOString().slice(0,10);
-  const allEngins = getEngins();
+  const allEngins = await getEngins();
   const wsE = XLSX.utils.aoa_to_sheet([['N° Engin','Modèle','Type','Châssis','Série','Année','Heures','Chantier','Statut']]
     .concat(allEngins.map(e=>[e.id,e.name,e.type,e.chassis||'',e.serie||'',e.annee||'',e.heures,e.chantier,e.statut==='dispo'?'Disponible':e.statut==='panne'?'En panne':'Maintenance'])));
   wsE['!cols']=[12,20,16,16,14,8,10,12,12].map(w=>({wch:w}));
   XLSX.utils.book_append_sheet(wb,wsE,'Parc Engins');
-  const allOT = getInterventions();
-  const wsOT = XLSX.utils.aoa_to_sheet([['N° OT','Engin','Panne','Section','Technicien','Date','Priorité','Statut','Pièces']]
+  const allOT = await getInterventions();
+  const wsOT  = XLSX.utils.aoa_to_sheet([['N° OT','Engin','Panne','Section','Technicien','Date','Priorité','Statut','Pièces']]
     .concat(allOT.map(i=>[i.id,i.engin,i.panne,i.section,i.tech,i.date,i.priorite,i.statut,i.pieces||''])));
   wsOT['!cols']=[10,22,22,14,12,12,10,14,24].map(w=>({wch:w}));
   XLSX.utils.book_append_sheet(wb,wsOT,'Interventions');
-  const allStock = getStockItems();
+  const allStock = await getStockItems();
   const wsSt = XLSX.utils.aoa_to_sheet([['Réf.','Désignation','Catégorie','Qté','Seuil','Unité','Prix MAD','Fournisseur']]
     .concat(allStock.map(s=>[s.ref,s.nom,s.cat,s.qte,s.seuil,s.unite,s.prix,s.fourn])));
   wsSt['!cols']=[10,26,14,6,8,8,12,22].map(w=>({wch:w}));
   XLSX.utils.book_append_sheet(wb,wsSt,'Stock Pièces');
-  // History sheet
-  const allH = getHistory();
-  const wsH = XLSX.utils.aoa_to_sheet([['Date','Utilisateur','Rôle','Module','Action','Cible','Avant','Après']]
+  const allH = await getHistory();
+  const wsH  = XLSX.utils.aoa_to_sheet([['Date','Utilisateur','Rôle','Module','Action','Cible','Avant','Après']]
     .concat(allH.map(h=>[h.date,h.user,h.role,h.module,h.action,h.cible,h.avant,h.apres])));
   wsH['!cols']=[18,16,14,22,26,26,22,22].map(w=>({wch:w}));
   XLSX.utils.book_append_sheet(wb,wsH,'Historique');
@@ -3209,8 +3212,8 @@ function exportXLSX() {
   showToast('✓ Export XLSX — 4 feuilles téléchargées');
 }
 
-function exportPDF() {
-  const allEngins = getEngins();
+async function exportPDF() {
+  const allEngins = await getEngins();
   const win = window.open('','_blank');
   win.document.write(`<html><head><title>Rapport GMAO</title>
   <style>body{font-family:Arial,sans-serif;padding:30px;color:#111;font-size:13px}
@@ -3240,7 +3243,7 @@ function exportPDF() {
   </table>
   <h2>Interventions en cours</h2>
   <table><tr><th>N° OT</th><th>Engin</th><th>Panne</th><th>Section</th><th>Technicien</th><th>Priorité</th><th>Statut</th></tr>
-  ${getInterventions().filter(i=>i.statut!=='Terminée').map(i=>`<tr><td>${i.id}</td><td>${i.engin}</td><td>${i.panne}</td><td>${i.section}</td><td>${i.tech}</td>
+  ${(await getInterventions()).filter(i=>i.statut!=='Terminée').map(i=>`<tr><td>${i.id}</td><td>${i.engin}</td><td>${i.panne}</td><td>${i.section}</td><td>${i.tech}</td>
   <td><span class="${i.priorite==='Urgent'?'bad':'ok'}">${i.priorite}</span></td><td>${i.statut}</td></tr>`).join('')}
   </table>
   <p style="margin-top:36px;font-size:9px;color:#9ca3af;border-top:1px solid #e5e7eb;padding-top:8px">
@@ -3250,8 +3253,8 @@ function exportPDF() {
   showToast('✓ PDF généré');
 }
 
-function filterStock(q) {
-  renderStock();
+async function filterStock(q) {
+  await renderStock();
   if (!q) return;
   document.querySelectorAll('#stockTable tr').forEach(r => {
     r.style.display = r.textContent.toLowerCase().includes(q.toLowerCase()) ? '' : 'none';
@@ -3277,7 +3280,7 @@ function showToast(msg) {
 // ═══ SCROLL TO TOP ═══
 function initScrollTop() {
   const content = document.querySelector('.content');
-  const btn = document.getElementById('scrollTop');
+  const btn     = document.getElementById('scrollTop');
   if (!content || !btn) return;
   content.addEventListener('scroll', () => {
     btn.classList.toggle('visible', content.scrollTop > 200);
@@ -3287,38 +3290,40 @@ function initScrollTop() {
   });
 }
 
+// ═══ MODALS ═══
+function openModal(id)  { document.getElementById(id)?.classList.add('open'); }
+function closeModal(id) { document.getElementById(id)?.classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(o => {
+  o.addEventListener('click', e => { if (e.target === o) o.classList.remove('open'); });
+});
 
-// ═══════════════════════════════════════════════
-// MODULE WORKFLOW — Tâches & Demandes d'Intervention
-// ═══════════════════════════════════════════════
-function getTaches() {
-  return JSON.parse(localStorage.getItem('gmao_taches') || '[]');
-}
-function saveTaches(list) {
-  localStorage.setItem('gmao_taches', JSON.stringify(list));
-}
-function nextTaskId() {
-  const list = getTaches();
-  const nums = list.map(t => parseInt((t.id||'').split('-')[1]||'0')).filter(n => !isNaN(n));
-  return 'TSK-' + String((Math.max(0, ...nums) || 0) + 1).padStart(4, '0');
-}
-function findUserById(id) { return getUsers().find(u => u.id === id); }
+// ═══ NOTIFICATIONS ═══
+const notifPanel = document.getElementById('notifPanel');
+function toggleNotif() { notifPanel.classList.toggle('open'); }
 
-// ── Ouvre le modal "Demander Intervention" (réservé chef_parc + master + coordinateur)
-function openDemanderIntervention() {
+// ═══ SECTION FILTER ═══
+function filterSection(section, el) {
+  document.querySelectorAll('.section-chips .chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  showToast('Filtrage : ' + el.textContent.trim());
+}
+
+// ═══ WORKFLOW — TACHES ═══
+async function getTachesData() { return await getTaches(); }
+
+async function openDemanderIntervention() {
   if (!currentUser) return;
-  // Remplir engins
   const engSel = document.getElementById('diEngin');
-  const engs = getEngins();
+  const engs   = await getEngins();
   engSel.innerHTML = engs.map(e => `<option value="${e.id} — ${e.name}">${e.id} — ${e.name}</option>`).join('') || '<option>—</option>';
-  // Destinataires : chef_atelier + coordinateur (fallback master)
-  const dests = getUsers().filter(u => ['chef_atelier','coordinateur'].includes(u.id));
+  const users  = await getUsers();
+  const dests  = users.filter(u => ['chef_atelier','coordinateur'].includes(u.id));
   document.getElementById('diDest').innerHTML = dests.map(u => `<option value="${u.id}">${u.name} — ${u.role}</option>`).join('');
   document.getElementById('diPanne').value = '';
   openModal('modalDemanderInter');
 }
 
-function submitDemanderIntervention() {
+async function submitDemanderIntervention() {
   if (!currentUser) return;
   const engin   = document.getElementById('diEngin').value;
   const section = document.getElementById('diSection').value;
@@ -3326,11 +3331,9 @@ function submitDemanderIntervention() {
   const destId  = document.getElementById('diDest').value;
   const panne   = document.getElementById('diPanne').value.trim();
   if (!panne) { showToast('⚠ Description requise'); return; }
-  const dest = findUserById(destId);
-
-  // 1) Créer un OT visible immédiatement dans la page Interventions du Chef d'Atelier
-  const interList = getInterventions();
-  const otId = 'INT-' + String(parseInt(interList[0]?.id?.split('-')[1] || '050') + 1);
+  const dest = await findUserById(destId);
+  const interList = await getInterventions();
+  const otId  = 'INT-' + String(parseInt(interList[0]?.id?.split('-')[1] || '050') + 1);
   const newOT = {
     id: otId, engin, panne, section, tech: '— À assigner —',
     date: new Date().toLocaleDateString('fr-FR'),
@@ -3338,12 +3341,10 @@ function submitDemanderIntervention() {
     pieces: '', origine: 'Demande Chef de Parc — '+currentUser.name
   };
   interList.unshift(newOT);
-  saveInterventions(interList);
-
-  // 2) Créer la tâche workflow associée
-  const tasks = getTaches();
+  await saveInterventions(interList);
+  const tasks = await getTaches();
   const t = {
-    id: nextTaskId(),
+    id: await nextTaskId(),
     type: 'Demande Intervention',
     sujet: '['+otId+'] '+section+' — '+engin,
     description: panne,
@@ -3355,17 +3356,8 @@ function submitDemanderIntervention() {
     history: [{ at: new Date().toISOString(), by: currentUser.name, action: 'Création' }]
   };
   tasks.unshift(t);
-  saveTaches(tasks);
-
-  addHistory({
-    module: 'Workflow — Demande Intervention',
-    action: 'Demande envoyée',
-    cible: otId+' — '+engin,
-    avant: '—',
-    apres: 'Vers: '+dest.role+' | Priorité: '+prio,
-    details: panne
-  });
-
+  await saveTaches(tasks);
+  await addHistory({ module:'Workflow — Demande Intervention', action:'Demande envoyée', cible:otId+' — '+engin, avant:'—', apres:'Vers: '+dest.role+' | Priorité: '+prio, details:panne });
   closeModal('modalDemanderInter');
   if (document.getElementById('page-interventions')?.classList.contains('active')) renderInterventions();
   if (document.getElementById('page-taches')?.classList.contains('active')) renderTaches();
@@ -3373,29 +3365,28 @@ function submitDemanderIntervention() {
   showToast('✓ Demande envoyée — OT '+otId+' créé pour '+dest.role);
 }
 
-// ── Ouvre le modal "Assigner Tâche" (tous rôles)
-function openAssignerTache() {
+async function openAssignerTache() {
   if (!currentUser) return;
-  const dests = getUsers().filter(u => u.id !== currentUser.id);
+  const users = await getUsers();
+  const dests = users.filter(u => u.id !== currentUser.id);
   document.getElementById('atDest').innerHTML = dests.map(u => `<option value="${u.id}">${u.name} — ${u.role}</option>`).join('');
   document.getElementById('atSujet').value = '';
-  document.getElementById('atDesc').value = '';
+  document.getElementById('atDesc').value  = '';
   openModal('modalAssignerTache');
 }
 
-function submitAssignerTache() {
+async function submitAssignerTache() {
   if (!currentUser) return;
   const destId = document.getElementById('atDest').value;
   const sujet  = document.getElementById('atSujet').value.trim();
   const desc   = document.getElementById('atDesc').value.trim();
   const prio   = document.getElementById('atPriorite').value;
   if (!sujet) { showToast('⚠ Sujet requis'); return; }
-  const dest = findUserById(destId);
-  const tasks = getTaches();
+  const dest  = await findUserById(destId);
+  const tasks = await getTaches();
   const t = {
-    id: nextTaskId(),
-    type: 'Tâche',
-    sujet, description: desc,
+    id: await nextTaskId(),
+    type: 'Tâche', sujet, description: desc,
     fromId: currentUser.id, fromName: currentUser.name, fromRole: currentUser.role,
     toId: destId, toName: dest.name, toRole: dest.role,
     priorite: prio, statut: 'Nouvelle',
@@ -3403,46 +3394,35 @@ function submitAssignerTache() {
     history: [{ at: new Date().toISOString(), by: currentUser.name, action: 'Création' }]
   };
   tasks.unshift(t);
-  saveTaches(tasks);
-  addHistory({
-    module: 'Workflow — Tâches',
-    action: 'Tâche assignée',
-    cible: t.id+' — '+sujet,
-    avant: '—',
-    apres: 'Vers: '+dest.name+' ('+dest.role+') | Prio: '+prio,
-    details: desc
-  });
+  await saveTaches(tasks);
+  await addHistory({ module:'Workflow — Tâches', action:'Tâche assignée', cible:t.id+' — '+sujet, avant:'—', apres:'Vers: '+dest.name+' ('+dest.role+') | Prio: '+prio, details:desc });
   closeModal('modalAssignerTache');
   if (document.getElementById('page-taches')?.classList.contains('active')) renderTaches();
   refreshTaskBadge();
   showToast('✓ Tâche envoyée à '+dest.name);
 }
 
-// ── Affiche la table des tâches selon le scope
-function renderTaches() {
+async function renderTaches() {
   if (!currentUser) return;
-  const tbody = document.getElementById('tasksTable');
+  const tbody   = document.getElementById('tasksTable');
   if (!tbody) return;
   const scopeSel = document.getElementById('taskFilterScope');
   const statSel  = document.getElementById('taskFilterStatut');
-  const isCoord = currentUser.id === 'coordinateur' || currentUser.id === 'master';
-  // Si pas coordinateur, retirer "Toutes" du select
+  const isCoord  = currentUser.id === 'coordinateur' || currentUser.id === 'master';
   if (scopeSel) {
     const allOpt = scopeSel.querySelector('option[value="all"]');
     if (allOpt) allOpt.style.display = isCoord ? '' : 'none';
     if (!isCoord && scopeSel.value === 'all') scopeSel.value = 'inbox';
   }
-
-  const all = getTaches();
+  const all   = await getTaches();
   const scope = scopeSel?.value || 'inbox';
   const statF = statSel?.value || '';
   let list;
-  if (scope === 'inbox')      list = all.filter(t => t.toId === currentUser.id);
-  else if (scope === 'sent')  list = all.filter(t => t.fromId === currentUser.id);
-  else                        list = all; // coordinator: all
+  if (scope === 'inbox')     list = all.filter(t => t.toId === currentUser.id);
+  else if (scope === 'sent') list = all.filter(t => t.fromId === currentUser.id);
+  else                       list = all;
   if (statF) list = list.filter(t => t.statut === statF);
 
-  // Stats (toutes mes tâches reçues)
   const inbox = all.filter(t => t.toId === currentUser.id);
   const sent  = all.filter(t => t.fromId === currentUser.id);
   document.getElementById('taskStatTodo').textContent     = inbox.filter(t => t.statut === 'Nouvelle').length;
@@ -3474,52 +3454,49 @@ function renderTaches() {
 }
 
 let currentTacheId = null;
-function openTacheDetail(id) {
-  const t = getTaches().find(x => x.id === id);
+async function openTacheDetail(id) {
+  const all = await getTaches();
+  const t   = all.find(x => x.id === id);
   if (!t) return;
   currentTacheId = id;
-  document.getElementById('tdId').textContent = t.id;
-  document.getElementById('tdType').textContent = t.type;
-  document.getElementById('tdFrom').textContent = t.fromName + ' ('+t.fromRole+')';
-  document.getElementById('tdTo').textContent = t.toName + ' ('+t.toRole+')';
-  document.getElementById('tdDate').textContent = new Date(t.createdAt).toLocaleString('fr-FR');
-  document.getElementById('tdPrio').innerHTML = `<span class="badge ${t.priorite==='Urgent'?'badge-danger':t.priorite==='Normal'?'badge-blue':'badge-gray'}">${t.priorite}</span>`;
-  document.getElementById('tdStat').innerHTML = `<span class="badge ${t.statut==='Terminée'?'badge-ok':t.statut==='En cours'?'badge-warn':t.statut==='Refusée'?'badge-danger':'badge-blue'}">${t.statut}</span>`;
+  document.getElementById('tdId').textContent    = t.id;
+  document.getElementById('tdType').textContent  = t.type;
+  document.getElementById('tdFrom').textContent  = t.fromName + ' ('+t.fromRole+')';
+  document.getElementById('tdTo').textContent    = t.toName + ' ('+t.toRole+')';
+  document.getElementById('tdDate').textContent  = new Date(t.createdAt).toLocaleString('fr-FR');
+  document.getElementById('tdPrio').innerHTML    = `<span class="badge ${t.priorite==='Urgent'?'badge-danger':t.priorite==='Normal'?'badge-blue':'badge-gray'}">${t.priorite}</span>`;
+  document.getElementById('tdStat').innerHTML    = `<span class="badge ${t.statut==='Terminée'?'badge-ok':t.statut==='En cours'?'badge-warn':t.statut==='Refusée'?'badge-danger':'badge-blue'}">${t.statut}</span>`;
   document.getElementById('tdSujet').textContent = t.sujet;
   document.getElementById('tdDesc').textContent  = t.description || '—';
-  document.getElementById('tdReponse').value = '';
-
-  // Permissions sur les actions
+  document.getElementById('tdReponse').value     = '';
   const isRecipient = currentUser && t.toId === currentUser.id;
-  const isCoord = currentUser && (currentUser.id === 'coordinateur' || currentUser.id === 'master');
-  const isFinal = ['Terminée','Refusée'].includes(t.statut);
-  const canAct  = (isRecipient || isCoord) && !isFinal;
-
+  const isCoord     = currentUser && (currentUser.id === 'coordinateur' || currentUser.id === 'master');
+  const isFinal     = ['Terminée','Refusée'].includes(t.statut);
+  const canAct      = (isRecipient || isCoord) && !isFinal;
   document.getElementById('tdBtnProgress').style.display = (canAct && t.statut !== 'En cours') ? '' : 'none';
   document.getElementById('tdBtnDone').style.display     = canAct ? '' : 'none';
   document.getElementById('tdBtnRefuse').style.display   = (canAct && isRecipient) ? '' : 'none';
-
-  // Réassignation : coordinateur uniquement (et pas si terminée)
   const reassignWrap = document.getElementById('tdReassignWrap');
   const btnReassign  = document.getElementById('tdBtnReassign');
   if (isCoord && !isFinal) {
     reassignWrap.style.display = '';
-    btnReassign.style.display = '';
-    const dests = getUsers().filter(u => u.id !== t.toId);
+    btnReassign.style.display  = '';
+    const users = await getUsers();
+    const dests = users.filter(u => u.id !== t.toId);
     document.getElementById('tdReassign').innerHTML = dests.map(u => `<option value="${u.id}">${u.name} — ${u.role}</option>`).join('');
   } else {
     reassignWrap.style.display = 'none';
-    btnReassign.style.display = 'none';
+    btnReassign.style.display  = 'none';
   }
   openModal('modalTacheDetail');
 }
 
-function updateTacheStatut(newStatut) {
+async function updateTacheStatut(newStatut) {
   if (!currentTacheId) return;
-  const list = getTaches();
-  const t = list.find(x => x.id === currentTacheId);
+  const list = await getTaches();
+  const t    = list.find(x => x.id === currentTacheId);
   if (!t) return;
-  const old = t.statut;
+  const old     = t.statut;
   const reponse = document.getElementById('tdReponse').value.trim();
   t.statut = newStatut;
   if (reponse) {
@@ -3527,68 +3504,52 @@ function updateTacheStatut(newStatut) {
   }
   t.history = t.history || [];
   t.history.push({ at: new Date().toISOString(), by: currentUser.name, action: newStatut + (reponse ? ' (réponse)' : '') });
-  saveTaches(list);
-  // Si tâche liée à un OT et on la termine → marquer l'OT terminé
+  await saveTaches(list);
   if (newStatut === 'Terminée' && t.relatedOT) {
-    const interList = getInterventions();
+    const interList = await getInterventions();
     const ot = interList.find(i => i.id === t.relatedOT);
     if (ot && ot.statut !== 'Terminée') {
       ot.statut = 'Terminée';
-      saveInterventions(interList);
+      await saveInterventions(interList);
     }
   }
-  addHistory({
-    module: 'Workflow — Tâches',
-    action: 'Changement statut tâche',
-    cible: t.id + ' — ' + t.sujet,
-    avant: old,
-    apres: newStatut,
-    details: reponse || ''
-  });
+  await addHistory({ module:'Workflow — Tâches', action:'Changement statut tâche', cible:t.id+' — '+t.sujet, avant:old, apres:newStatut, details:reponse||'' });
   closeModal('modalTacheDetail');
   renderTaches();
   refreshTaskBadge();
   showToast('✓ Tâche '+t.id+' → '+newStatut);
 }
 
-function reassignTache() {
+async function reassignTache() {
   if (!currentTacheId) return;
   const newToId = document.getElementById('tdReassign').value;
-  const list = getTaches();
-  const t = list.find(x => x.id === currentTacheId);
+  const list    = await getTaches();
+  const t       = list.find(x => x.id === currentTacheId);
   if (!t) return;
-  const dest = findUserById(newToId);
+  const dest  = await findUserById(newToId);
   if (!dest) return;
   const oldTo = t.toName + ' ('+t.toRole+')';
   t.toId = newToId; t.toName = dest.name; t.toRole = dest.role;
   t.statut = 'Nouvelle';
   t.history = t.history || [];
   t.history.push({ at: new Date().toISOString(), by: currentUser.name, action: 'Réassignée → '+dest.name });
-  saveTaches(list);
-  addHistory({
-    module: 'Workflow — Tâches',
-    action: 'Réassignation tâche (Coordinateur)',
-    cible: t.id+' — '+t.sujet,
-    avant: oldTo,
-    apres: dest.name+' ('+dest.role+')',
-    details: 'Par: '+currentUser.name
-  });
+  await saveTaches(list);
+  await addHistory({ module:'Workflow — Tâches', action:'Réassignation tâche (Coordinateur)', cible:t.id+' — '+t.sujet, avant:oldTo, apres:dest.name+' ('+dest.role+')', details:'Par: '+currentUser.name });
   closeModal('modalTacheDetail');
   renderTaches();
   refreshTaskBadge();
   showToast('↪ Tâche réassignée à '+dest.name);
 }
 
-// Badge "tâches reçues non traitées"
-function refreshTaskBadge() {
+async function refreshTaskBadge() {
   const badge = document.getElementById('taskInboxBadge');
   if (!badge || !currentUser) return;
-  const n = getTaches().filter(t => t.toId === currentUser.id && t.statut === 'Nouvelle').length;
+  const all = await getTaches();
+  const n   = all.filter(t => t.toId === currentUser.id && t.statut === 'Nouvelle').length;
   if (n > 0) { badge.textContent = n; badge.style.display = ''; }
   else { badge.style.display = 'none'; }
 }
 
-// Hook : afficher/cacher "Demander Intervention" selon le rôle
 function applyWorkflowAccess() {
   const btn = document.getElementById('btnDemanderInter');
   if (btn && currentUser) {
@@ -3598,60 +3559,85 @@ function applyWorkflowAccess() {
   refreshTaskBadge();
 }
 
-// Patch showPage pour rendre la page tâches
+// ═══ PATCH showPage & applyAccessControl pour le workflow ═══
 const _origShowPage = showPage;
-showPage = function(id) {
+window.showPage = function(id) {
   _origShowPage(id);
   if (id === 'taches') renderTaches();
 };
 
-// Patch applyAccessControl pour brancher le workflow
 const _origApplyAccess = applyAccessControl;
-applyAccessControl = function(user) {
+window.applyAccessControl = function(user) {
   _origApplyAccess(user);
   applyWorkflowAccess();
 };
 
-// ═══ INIT ═══
-const APP_VERSION = 'v3.2-workflow';
-if (localStorage.getItem('gmao_version') !== APP_VERSION) {
-  ['gmao_users','gmao_engins','gmao_interventions','gmao_stock','gmao_history','gmao_log','gmao_taches'].forEach(k => localStorage.removeItem(k));
-  localStorage.setItem('gmao_version', APP_VERSION);
+// ═══ GÉNÉRATION RAPPORT ═══
+function generateRapport() {
+  showToast('⬡ Génération du rapport en cours...');
+  setTimeout(() => { document.getElementById('rapportPreview').style.display='block'; showToast('✓ Rapport généré'); }, 800);
 }
+
+// ═══ EXPOSE FONCTIONS GLOBALES (nécessaire car type="module") ═══
+window.doLogin              = doLogin;
+window.doLogout             = doLogout;
+window.showPage             = showPage;
+window.openModal            = openModal;
+window.closeModal           = closeModal;
+window.toggleNotif          = toggleNotif;
+window.filterSection        = filterSection;
+window.filterEngins         = filterEngins;
+window.openEditEngin        = openEditEngin;
+window.saveEditEngin        = saveEditEngin;
+window.changeEnginStatut    = changeEnginStatut;
+window.openEditOT           = openEditOT;
+window.saveOTEdit           = saveOTEdit;
+window.changeOTStatut       = changeOTStatut;
+window.renderInterventions  = renderInterventions;
+window.openEditStock        = openEditStock;
+window.saveEditStock        = saveEditStock;
+window.saveEntreeStock      = saveEntreeStock;
+window.saveSortieStock      = saveSortieStock;
+window.saveEngin            = saveEngin;
+window.saveIntervention     = saveIntervention;
+window.savePiece            = savePiece;
+window.closeSortie          = closeSortie;
+window.validTransfert       = validTransfert;
+window.viewChantier         = viewChantier;
+window.filterStock          = filterStock;
+window.renderHistorique     = renderHistorique;
+window.exportHistorique     = exportHistorique;
+window.clearHistorique      = clearHistorique;
+window.exportXLSX           = exportXLSX;
+window.exportPDF            = exportPDF;
+window.generateRapport      = generateRapport;
+window.openEditCode         = openEditCode;
+window.toggleCodeVisibility = toggleCodeVisibility;
+window.generateRandom       = generateRandom;
+window.saveUserEdit         = saveUserEdit;
+window.saveNewCode          = saveNewCode;
+window.quickRegen           = quickRegen;
+window.regenerateAllCodes   = regenerateAllCodes;
+window.renderAdminUsers     = renderAdminUsers;
+window.openDemanderIntervention  = openDemanderIntervention;
+window.submitDemanderIntervention= submitDemanderIntervention;
+window.openAssignerTache    = openAssignerTache;
+window.submitAssignerTache  = submitAssignerTache;
+window.renderTaches         = renderTaches;
+window.openTacheDetail      = openTacheDetail;
+window.updateTacheStatut    = updateTacheStatut;
+window.reassignTache        = reassignTache;
+window.refreshTaskBadge     = refreshTaskBadge;
+
+// ═══ INIT ═══
 document.getElementById('loginCode').focus();
 initScrollTop();
-// Refresh badge périodiquement (multi-onglets)
 setInterval(() => { if (currentUser) refreshTaskBadge(); }, 5000);
+
 </script>
 
 <!-- Bouton Scroll To Top -->
 <button id="scrollTop" title="Remonter en haut">↑</button>
 
-  <script type="module">
-  // Import the functions you need from the SDKs you need
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
-  import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-analytics.js";
-  import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js";
-  // TODO: Add SDKs for Firebase products that you want to use
-  // https://firebase.google.com/docs/web/setup#available-libraries
-
-  // Your web app's Firebase configuration
-  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-  const firebaseConfig = {
-    apiKey: "AIzaSyAyx0lmjKSLVT6vKaCBn5DNrH1acBFcCdM",
-    authDomain: "gestion-de-parc-a4a18.firebaseapp.com",
-    projectId: "gestion-de-parc-a4a18",
-    storageBucket: "gestion-de-parc-a4a18.firebasestorage.app",
-    messagingSenderId: "496147499594",
-    appId: "1:496147499594:web:b0e7e349adf8ea6538b4b3",
-    measurementId: "G-E7LCMBV2EW"
-  };
-
-  // Initialize Firebase
-  const app = initializeApp(firebaseConfig);
-  const analytics = getAnalytics(app);
-  const db = getFirestore(app);
-
-</script>
 </body>
 </html>
