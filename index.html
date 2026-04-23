@@ -1121,6 +1121,7 @@
                 <option value="maintenance">Maintenance</option>
               </select>
               <button class="btn btn-warn btn-sm" id="btnDemanderInter" onclick="openDemanderIntervention()" style="display:none">⚙ Demander Intervention</button>
+              <button class="btn btn-ghost btn-sm" id="btnDemanderPiece" onclick="openDemanderPiece()" style="display:none;color:#06b6d4;border-color:rgba(6,182,212,.4)">📦 Demander Pièce</button>
               <button class="btn btn-ghost btn-sm" id="btnAssignerTache" onclick="openAssignerTache()">📨 Assigner Tâche</button>
               <button class="btn btn-primary btn-sm" onclick="openModal('modalEngin')">+ Nouvel Engin</button>
             </div>
@@ -1745,6 +1746,7 @@
                 <option value="Refusée">Refusée</option>
               </select>
               <button class="btn btn-warn btn-sm" onclick="openDemanderIntervention()">⚙ Demander Intervention</button>
+              <button class="btn btn-ghost btn-sm" id="btnDemanderPieceTab" onclick="openDemanderPiece()" style="display:none;color:#06b6d4;border-color:rgba(6,182,212,.4)">📦 Demander Pièce</button>
               <button class="btn btn-primary btn-sm" onclick="openAssignerTache()">+ Nouvelle Tâche</button>
             </div>
           </div>
@@ -1773,7 +1775,10 @@
         <div class="panel">
           <div class="panel-header">
             <div class="panel-title">👥 Gestion des Sessions & Codes d'Accès</div>
-            <button class="btn btn-primary btn-sm" onclick="regenerateAllCodes()">↺ Régénérer Tous</button>
+            <div style="display:flex;gap:8px;margin-left:auto">
+              <button class="btn btn-success btn-sm" onclick="openNewUser()">+ Nouvel Utilisateur</button>
+              <button class="btn btn-primary btn-sm" onclick="regenerateAllCodes()">↺ Régénérer Tous</button>
+            </div>
           </div>
           <div id="usersList">
             <!-- Populated by JS -->
@@ -2279,6 +2284,106 @@
   </div>
 </div>
 
+<!-- Modal: Nouvel Utilisateur (Master Admin) -->
+<div class="modal-overlay" id="modalNewUser">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">➕ Nouvel Utilisateur</div>
+      <button class="modal-close" onclick="closeModal('modalNewUser')">✕</button>
+    </div>
+    <div style="padding:0 16px 8px">
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:.08em">→ L'utilisateur sera créé avec les modules du rôle sélectionné. Vous pouvez les personnaliser ci-dessous.</div>
+    </div>
+    <div class="form-grid">
+      <div class="form-group"><label>Nom / Prénom complet</label>
+        <input id="nuName" type="text" placeholder="Ex: Hassan Alaoui" maxlength="40">
+      </div>
+      <div class="form-group"><label>Rôle de base</label>
+        <select id="nuBaseRole" onchange="onNuRoleChange()">
+          <option value="chef_atelier">Chef d'Atelier</option>
+          <option value="chef_parc">Chef de Parc</option>
+          <option value="coordinateur">Coordinateur</option>
+          <option value="magasinier">Magasinier</option>
+          <option value="master">Master Admin</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Code d'accès (4–8 caractères)</label>
+        <div style="display:flex;gap:8px">
+          <input id="nuCode" type="text" maxlength="8" placeholder="Ex: HASSAN25"
+            style="flex:1;font-family:var(--font-mono);letter-spacing:.2em;text-transform:uppercase"
+            oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'')">
+          <button class="btn btn-ghost btn-sm" onclick="nuGenerateCode()" title="Générer aléatoire">↺</button>
+        </div>
+      </div>
+      <div class="form-group"><label>Initiales (auto si vide)</label>
+        <input id="nuInit" type="text" maxlength="3" placeholder="Ex: HA" style="text-transform:uppercase"
+          oninput="this.value=this.value.toUpperCase()">
+      </div>
+      <div class="form-group full">
+        <label>Modules autorisés</label>
+        <div id="nuPagesGrid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:10px;background:var(--surface3);border:1px solid var(--border2);border-radius:3px">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+      <div id="nuError" class="full" style="display:none;font-family:var(--font-mono);font-size:10px;color:var(--danger);background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);padding:8px 10px;border-radius:3px">
+        ⚠ Vérifiez les champs
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modalNewUser')">Annuler</button>
+      <button class="btn btn-success" onclick="saveNewUser()">✓ Créer l'utilisateur</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Demander Pièce (Chef de Parc → Magasinier) -->
+<div class="modal-overlay" id="modalDemanderPiece">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">📦 Demander une Pièce au Magasinier</div>
+      <button class="modal-close" onclick="closeModal('modalDemanderPiece')">✕</button>
+    </div>
+    <div style="padding:0 16px 8px">
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:.08em">→ La demande est envoyée directement au Magasinier. Le stock sera décrémenté à la validation.</div>
+    </div>
+    <div class="form-grid">
+      <div class="form-group full"><label>Pièce demandée</label>
+        <select id="dpPiece">
+          <!-- Populated by JS -->
+        </select>
+      </div>
+      <div class="form-group"><label>Quantité demandée</label>
+        <input id="dpQte" type="number" min="1" value="1">
+      </div>
+      <div class="form-group"><label>Priorité</label>
+        <select id="dpPriorite">
+          <option>Urgent</option><option selected>Normal</option><option>Faible</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Engin destinataire</label>
+        <select id="dpEngin">
+          <!-- Populated by JS -->
+        </select>
+      </div>
+      <div class="form-group"><label>Magasinier destinataire</label>
+        <select id="dpDest">
+          <!-- Populated by JS -->
+        </select>
+      </div>
+      <div class="form-group full"><label>Motif / Justification</label>
+        <textarea id="dpMotif" placeholder="Ex: Remplacement filtre à huile sur ENG-012 suite intervention INT-047..."></textarea>
+      </div>
+      <div id="dpInfo" class="full" style="font-family:var(--font-mono);font-size:10px;color:var(--text3);background:rgba(6,182,212,.08);border:1px solid rgba(6,182,212,.25);padding:8px 10px;border-radius:3px">
+        ℹ Stock actuel : <span id="dpStockInfo" style="color:var(--accent);font-weight:700">—</span>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modalDemanderPiece')">Annuler</button>
+      <button class="btn btn-primary" onclick="submitDemanderPiece()" style="background:#06b6d4;border-color:#06b6d4">📦 Envoyer la Demande</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal: Détail Tâche -->
 <div class="modal-overlay" id="modalTacheDetail">
   <div class="modal">
@@ -2381,12 +2486,40 @@ async function fsSetMain(colName, data) {
 // ═══════════════════════════════════════════════
 
 const DEFAULT_USERS = [
-  { id:'master',       name:'Rami Mohamed Amine', role:'Master Admin',   init:'MA', avatarClass:'avatar-master',  code:'ADMIN2025', pages:['dashboard','engins','chantiers','receptionsPage','interventions','stock','carburant','coordination','rapports','adminUsers','historique','taches'] },
-  { id:'chef_atelier', name:'Chef Atelier',        role:"Chef d'Atelier", init:'CA', avatarClass:'avatar-atelier', code:'ATELIER1',  pages:['interventions','carburant','historique','taches'] },
-  { id:'chef_parc',    name:'Chef de Parc',        role:'Chef de Parc',   init:'CP', avatarClass:'avatar-parc',    code:'PARC2025',  pages:['dashboard','engins','chantiers','receptionsPage','historique','taches'] },
-  { id:'coordinateur', name:'Amine',               role:'Coordinateur',   init:'A',  avatarClass:'avatar-coord',   code:'COORD01',   pages:['dashboard','engins','chantiers','receptionsPage','interventions','stock','carburant','coordination','rapports','historique','taches'] },
-  { id:'magasinier',   name:'Magasinier',          role:'Magasinier',     init:'MG', avatarClass:'avatar-mag',     code:'STOCK25',   pages:['stock','historique','taches'] },
+  { id:'master',       baseRole:'master',       name:'Rami Mohamed Amine', role:'Master Admin',   init:'MA', avatarClass:'avatar-master',  code:'ADMIN2025', pages:['dashboard','engins','chantiers','receptionsPage','interventions','stock','carburant','coordination','rapports','adminUsers','historique','taches'] },
+  { id:'chef_atelier', baseRole:'chef_atelier', name:'Chef Atelier',        role:"Chef d'Atelier", init:'CA', avatarClass:'avatar-atelier', code:'ATELIER1',  pages:['interventions','carburant','historique','taches'] },
+  { id:'chef_parc',    baseRole:'chef_parc',    name:'Chef de Parc',        role:'Chef de Parc',   init:'CP', avatarClass:'avatar-parc',    code:'PARC2025',  pages:['dashboard','engins','chantiers','receptionsPage','historique','taches'] },
+  { id:'coordinateur', baseRole:'coordinateur', name:'Amine',               role:'Coordinateur',   init:'A',  avatarClass:'avatar-coord',   code:'COORD01',   pages:['dashboard','engins','chantiers','receptionsPage','interventions','stock','carburant','coordination','rapports','historique','taches'] },
+  { id:'magasinier',   baseRole:'magasinier',   name:'Magasinier',          role:'Magasinier',     init:'MG', avatarClass:'avatar-mag',     code:'STOCK25',   pages:['stock','historique','taches'] },
 ];
+
+// ═══ ROLE TEMPLATES (pour création nouveaux utilisateurs) ═══
+const ROLE_TEMPLATES = {
+  master:       { role:'Master Admin',   avatarClass:'avatar-master',  defaultPages:['dashboard','engins','chantiers','receptionsPage','interventions','stock','carburant','coordination','rapports','adminUsers','historique','taches'] },
+  chef_atelier: { role:"Chef d'Atelier", avatarClass:'avatar-atelier', defaultPages:['interventions','carburant','historique','taches'] },
+  chef_parc:    { role:'Chef de Parc',   avatarClass:'avatar-parc',    defaultPages:['dashboard','engins','chantiers','receptionsPage','historique','taches'] },
+  coordinateur: { role:'Coordinateur',   avatarClass:'avatar-coord',   defaultPages:['dashboard','engins','chantiers','receptionsPage','interventions','stock','carburant','coordination','rapports','historique','taches'] },
+  magasinier:   { role:'Magasinier',     avatarClass:'avatar-mag',     defaultPages:['stock','historique','taches'] },
+};
+
+const ALL_PAGES = [
+  { id:'dashboard',      label:'Dashboard' },
+  { id:'engins',         label:'Parc Engins' },
+  { id:'chantiers',      label:'Chantiers' },
+  { id:'receptionsPage', label:'Réceptions' },
+  { id:'interventions',  label:'Interventions' },
+  { id:'stock',          label:'Stock & Magasin' },
+  { id:'carburant',      label:'Carburant' },
+  { id:'coordination',   label:'Coordination' },
+  { id:'rapports',       label:'Rapports' },
+  { id:'adminUsers',     label:'Admin Users (Master only)' },
+  { id:'historique',     label:'Historique' },
+  { id:'taches',         label:'Tâches' },
+];
+
+// ═══ HELPER : obtenir le rôle de base (baseRole ou fallback id) ═══
+function getRoleKey(u) { return (u && (u.baseRole || u.id)) || ''; }
+function isRole(u, key) { return getRoleKey(u) === key; }
 
 let _usersCache = null;
 async function getUsers() {
@@ -2406,6 +2539,15 @@ async function getUsers() {
   }
   users.forEach(u => {
     if (!u.pages.includes('taches')) { u.pages.push('taches'); changed = true; }
+    // ═ Backfill baseRole pour anciens comptes ═
+    if (!u.baseRole) {
+      if (ROLE_TEMPLATES[u.id]) u.baseRole = u.id;
+      else if (u.role) {
+        const match = Object.entries(ROLE_TEMPLATES).find(([k,v]) => v.role === u.role);
+        u.baseRole = match ? match[0] : 'chef_atelier';
+      } else u.baseRole = 'chef_atelier';
+      changed = true;
+    }
   });
   if (changed) await saveUsers(users);
   _usersCache = users;
@@ -2491,13 +2633,13 @@ function applyAccessControl(user) {
       n.style.display = user.pages.includes(pageId) ? '' : 'none';
     }
   });
-  document.getElementById('navAdminUsers').style.display = user.id === 'master' ? '' : 'none';
+  document.getElementById('navAdminUsers').style.display = isRole(user, 'master') ? '' : 'none';
   const navH = document.getElementById('navHistorique');
   if (navH) navH.style.display = user.pages.includes('historique') ? '' : 'none';
   const topActions = document.querySelector('.topbar-actions');
-  if (topActions) topActions.style.display = (user.id === 'master' || user.id === 'coordinateur') ? 'flex' : 'none';
-  const isMag    = user.id === 'magasinier';
-  const isMaster = user.id === 'master';
+  if (topActions) topActions.style.display = (isRole(user,'master') || isRole(user,'coordinateur')) ? 'flex' : 'none';
+  const isMag    = isRole(user, 'magasinier');
+  const isMaster = isRole(user, 'master');
   document.getElementById('sectionMagasin').style.display = isMag ? '' : 'none';
   document.getElementById('navMagStock').style.display    = isMag ? '' : 'none';
   document.getElementById('navMagEntree').style.display   = isMag ? '' : 'none';
@@ -2550,9 +2692,12 @@ let editingUserId = null;
 let codeVisible   = false;
 
 async function renderAdminUsers() {
-  if (!currentUser || currentUser.id !== 'master') return;
+  if (!currentUser || !isRole(currentUser, 'master')) return;
   const users = await getUsers();
   document.getElementById('openSessions').textContent = 1;
+  // Update Utilisateurs Actifs count dynamically
+  const statActifs = document.querySelector('#page-adminUsers .stat-card.accent .stat-value');
+  if (statActifs) statActifs.textContent = users.length;
   const log = await getLog();
   const lastOk = log.find(l => l.result === 'Succès');
   document.getElementById('lastLoginDisplay').textContent = lastOk ? lastOk.time.split(' ')[0] : '—';
@@ -2562,30 +2707,34 @@ async function renderAdminUsers() {
 
   const list = document.getElementById('usersList');
   list.innerHTML = `
-    <div style="display:grid;grid-template-columns:44px 1fr 1fr 120px 90px 90px;align-items:center;gap:12px;padding:8px 16px;background:var(--surface3);border-bottom:2px solid var(--border2)">
+    <div style="display:grid;grid-template-columns:44px 1fr 1fr 120px 78px 78px 78px;align-items:center;gap:10px;padding:8px 16px;background:var(--surface3);border-bottom:2px solid var(--border2)">
       <div></div>
       <div style="font-family:var(--font-mono);font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.1em">NOM / RÔLE</div>
       <div style="font-family:var(--font-mono);font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.1em">PÉRIMÈTRE D'ACCÈS</div>
       <div style="font-family:var(--font-mono);font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;text-align:center">CODE SESSION</div>
       <div style="font-family:var(--font-mono);font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;text-align:center">MODIFIER</div>
       <div style="font-family:var(--font-mono);font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;text-align:center">REGEN</div>
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;text-align:center">SUPPR.</div>
     </div>
-    ${users.map(u => `
-    <div style="display:grid;grid-template-columns:44px 1fr 1fr 120px 90px 90px;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--border);transition:background .12s;cursor:default"
+    ${users.map(u => { const rk = getRoleKey(u); const canDelete = u.id !== 'master' && !isRole(u,'master'); return `
+    <div style="display:grid;grid-template-columns:44px 1fr 1fr 120px 78px 78px 78px;align-items:center;gap:10px;padding:13px 16px;border-bottom:1px solid var(--border);transition:background .12s;cursor:default"
       onmouseenter="this.style.background='var(--surface2)'" onmouseleave="this.style.background=''">
-      <div class="${u.avatarClass}" style="width:36px;height:36px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-size:13px;font-weight:700;flex-shrink:0">${u.init}</div>
+      <div class="${u.avatarClass||'avatar-coord'}" style="width:36px;height:36px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-size:13px;font-weight:700;flex-shrink:0">${u.init}</div>
       <div>
         <div style="font-size:13px;font-weight:600;color:var(--text)">${u.name}</div>
         <div style="font-family:var(--font-mono);font-size:9px;color:var(--text3);margin-top:3px;text-transform:uppercase;letter-spacing:.08em">${u.role}</div>
       </div>
-      <div style="font-size:11.5px;font-weight:500;color:${scopeColors[u.id]||'var(--text3)'}">${scopeLabels[u.id]||u.role}</div>
+      <div style="font-size:11.5px;font-weight:500;color:${scopeColors[rk]||'var(--text3)'}">${scopeLabels[rk]||u.role}</div>
       <div style="text-align:center">
         <span style="font-family:var(--font-mono);font-size:13px;font-weight:700;color:var(--accent);background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);padding:5px 10px;border-radius:3px;letter-spacing:.18em;display:inline-block;filter:blur(5px);cursor:pointer;transition:filter .2s;min-width:80px"
           onclick="this.style.filter=this.style.filter?'':'blur(5px)'" title="Cliquer pour révéler">${u.code}</span>
       </div>
-      <div style="text-align:center"><button class="btn btn-ghost btn-sm" onclick="openEditCode('${u.id}')" style="width:80px">✎ Modifier</button></div>
-      <div style="text-align:center"><button class="btn btn-ghost btn-sm" onclick="quickRegen('${u.id}')" style="width:80px;color:var(--accent2);border-color:rgba(59,130,246,.4)">↺ Regen</button></div>
-    </div>`).join('')}`;
+      <div style="text-align:center"><button class="btn btn-ghost btn-sm" onclick="openEditCode('${u.id}')" style="width:72px">✎ Modif</button></div>
+      <div style="text-align:center"><button class="btn btn-ghost btn-sm" onclick="quickRegen('${u.id}')" style="width:72px;color:var(--accent2);border-color:rgba(59,130,246,.4)">↺ Regen</button></div>
+      <div style="text-align:center">${canDelete
+        ? `<button class="btn btn-ghost btn-sm" onclick="deleteUser('${u.id}')" style="width:72px;color:var(--danger);border-color:rgba(239,68,68,.4)" title="Supprimer utilisateur">🗑 Suppr.</button>`
+        : `<span style="font-family:var(--font-mono);font-size:9px;color:var(--text3);opacity:.5">🔒 Core</span>`}</div>
+    </div>`; }).join('')}`;
 
   const tbody   = document.getElementById('loginLog');
   const logData = await getLog();
@@ -2681,7 +2830,7 @@ async function regenerateAllCodes() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   const users = await getUsers();
   users.forEach(u => {
-    if (u.id==='master') return;
+    if (isRole(u, 'master')) return;
     let c=''; for(let i=0;i<6;i++) c+=chars[Math.floor(Math.random()*chars.length)];
     u.code=c;
   });
@@ -2689,6 +2838,106 @@ async function regenerateAllCodes() {
   await addLog({ user:currentUser.name, role:'Master Admin', action:'Régénération globale de tous les codes', result:'Admin' });
   renderAdminUsers();
   showToast('↺ Tous les codes régénérés avec succès');
+}
+
+// ═══════════════════════════════════════════════
+// NOUVEL UTILISATEUR (Master Admin)
+// ═══════════════════════════════════════════════
+function onNuRoleChange() {
+  const rk = document.getElementById('nuBaseRole').value;
+  const tpl = ROLE_TEMPLATES[rk];
+  if (!tpl) return;
+  // Repeupler les checkboxes avec les pages par défaut du rôle
+  const grid = document.getElementById('nuPagesGrid');
+  grid.innerHTML = ALL_PAGES.map(p => {
+    const checked = tpl.defaultPages.includes(p.id) ? 'checked' : '';
+    return `<label style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--text2);cursor:pointer;font-family:var(--font-mono)">
+      <input type="checkbox" class="nu-page-cb" value="${p.id}" ${checked} style="accent-color:var(--accent);cursor:pointer">
+      <span>${p.label}</span>
+    </label>`;
+  }).join('');
+}
+
+function nuGenerateCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let c = '';
+  for (let i=0; i<6; i++) c += chars[Math.floor(Math.random()*chars.length)];
+  document.getElementById('nuCode').value = c;
+  document.getElementById('nuError').style.display = 'none';
+}
+
+async function openNewUser() {
+  if (!currentUser || !isRole(currentUser,'master')) return;
+  document.getElementById('nuName').value = '';
+  document.getElementById('nuCode').value = '';
+  document.getElementById('nuInit').value = '';
+  document.getElementById('nuBaseRole').value = 'chef_atelier';
+  document.getElementById('nuError').style.display = 'none';
+  onNuRoleChange();
+  openModal('modalNewUser');
+}
+
+async function saveNewUser() {
+  const errBox = document.getElementById('nuError');
+  const showErr = (msg) => { errBox.textContent = '⚠ '+msg; errBox.style.display='block'; };
+  const name = document.getElementById('nuName').value.trim();
+  const code = document.getElementById('nuCode').value.trim().toUpperCase().replace(/[^A-Z0-9]/g,'');
+  const baseRole = document.getElementById('nuBaseRole').value;
+  let init = document.getElementById('nuInit').value.trim().toUpperCase();
+  const pages = Array.from(document.querySelectorAll('.nu-page-cb'))
+    .filter(cb => cb.checked).map(cb => cb.value);
+
+  if (!name || name.length < 2) return showErr('Nom requis (min 2 caractères)');
+  if (!code || code.length < 4) return showErr('Code invalide (min 4 caractères alphanumériques)');
+  if (!pages.length) return showErr('Au moins un module doit être autorisé');
+  if (!ROLE_TEMPLATES[baseRole]) return showErr('Rôle invalide');
+
+  const users = await getUsers();
+  if (users.find(u => u.code.toUpperCase() === code)) return showErr('Ce code est déjà utilisé par un autre utilisateur');
+
+  // Générer initiales si vide
+  if (!init) {
+    const parts = name.split(' ').filter(Boolean);
+    init = parts.length >= 2 ? (parts[0][0]+parts[1][0]).toUpperCase() : name.slice(0,2).toUpperCase();
+  }
+
+  const tpl = ROLE_TEMPLATES[baseRole];
+  // Générer un ID unique qui commence par le baseRole
+  const uniqueId = baseRole + '_' + Date.now().toString(36);
+
+  const newUser = {
+    id: uniqueId,
+    baseRole: baseRole,
+    name: name,
+    role: tpl.role,
+    init: init.slice(0,3),
+    avatarClass: tpl.avatarClass,
+    code: code,
+    pages: pages
+  };
+  users.push(newUser);
+  await saveUsers(users);
+  await addLog({ user:currentUser.name, role:'Master Admin', action:'Création utilisateur — '+tpl.role+' — '+name, result:'Admin' });
+  await addHistory({ module:'Admin', action:'Nouvel utilisateur créé', cible:name+' ('+tpl.role+')', avant:'—', apres:'Code: '+code+' | Modules: '+pages.length, details:'ID: '+uniqueId });
+  closeModal('modalNewUser');
+  renderAdminUsers();
+  showToast('✓ Utilisateur créé : '+name+' — Code : '+code);
+}
+
+async function deleteUser(userId) {
+  if (!currentUser || !isRole(currentUser,'master')) return;
+  if (userId === 'master') { showToast('⚠ Impossible de supprimer le compte Master'); return; }
+  const users = await getUsers();
+  const user = users.find(u => u.id === userId);
+  if (!user) return;
+  if (isRole(user,'master')) { showToast('⚠ Impossible de supprimer un Master Admin'); return; }
+  if (!confirm('⚠ Supprimer définitivement l\'utilisateur "'+user.name+'" ('+user.role+') ?\n\nCette action est irréversible. L\'utilisateur ne pourra plus se connecter.')) return;
+  const filtered = users.filter(u => u.id !== userId);
+  await saveUsers(filtered);
+  await addLog({ user:currentUser.name, role:'Master Admin', action:'Suppression utilisateur — '+user.role+' — '+user.name, result:'Admin' });
+  await addHistory({ module:'Admin', action:'Utilisateur supprimé', cible:user.name+' ('+user.role+')', avant:'Code: '+user.code, apres:'—', details:'ID supprimé: '+userId });
+  renderAdminUsers();
+  showToast('🗑 Utilisateur supprimé : '+user.name);
 }
 
 // ═══ NAVIGATION ═══
@@ -3317,7 +3566,7 @@ async function openDemanderIntervention() {
   const engs   = await getEngins();
   engSel.innerHTML = engs.map(e => `<option value="${e.id} — ${e.name}">${e.id} — ${e.name}</option>`).join('') || '<option>—</option>';
   const users  = await getUsers();
-  const dests  = users.filter(u => ['chef_atelier','coordinateur'].includes(u.id));
+  const dests  = users.filter(u => isRole(u,'chef_atelier') || isRole(u,'coordinateur'));
   document.getElementById('diDest').innerHTML = dests.map(u => `<option value="${u.id}">${u.name} — ${u.role}</option>`).join('');
   document.getElementById('diPanne').value = '';
   openModal('modalDemanderInter');
@@ -3402,13 +3651,121 @@ async function submitAssignerTache() {
   showToast('✓ Tâche envoyée à '+dest.name);
 }
 
+// ═══════════════════════════════════════════════
+// DEMANDER PIÈCE (Chef de Parc / Master / Coord → Magasinier)
+// ═══════════════════════════════════════════════
+async function openDemanderPiece() {
+  if (!currentUser) return;
+  const allowed = isRole(currentUser,'master') || isRole(currentUser,'chef_parc') || isRole(currentUser,'coordinateur');
+  if (!allowed) { showToast('⚠ Accès refusé'); return; }
+
+  // Pièces (stock)
+  const stock = await getStockItems();
+  const pSel  = document.getElementById('dpPiece');
+  if (!stock.length) {
+    pSel.innerHTML = '<option value="">Aucune pièce en stock</option>';
+  } else {
+    pSel.innerHTML = stock.map(s => {
+      const status = s.qte===0 ? ' ⚠ RUPTURE' : s.qte<=s.seuil ? ' ⚠ critique' : '';
+      return `<option value="${s.ref}">${s.ref} — ${s.nom} (Stock: ${s.qte} ${s.unite||'Pcs'})${status}</option>`;
+    }).join('');
+  }
+  pSel.onchange = updateDpStockInfo;
+
+  // Engins
+  const engs = await getEngins();
+  const eSel = document.getElementById('dpEngin');
+  eSel.innerHTML = '<option value="">— Aucun (stock général) —</option>' +
+    engs.map(e => `<option value="${e.id} — ${e.name}">${e.id} — ${e.name}</option>`).join('');
+
+  // Magasiniers destinataires
+  const users = await getUsers();
+  const mags  = users.filter(u => isRole(u,'magasinier'));
+  const dSel  = document.getElementById('dpDest');
+  if (!mags.length) {
+    dSel.innerHTML = '<option value="">⚠ Aucun magasinier enregistré</option>';
+  } else {
+    dSel.innerHTML = mags.map(u => `<option value="${u.id}">${u.name} — ${u.role}</option>`).join('');
+  }
+
+  document.getElementById('dpQte').value    = 1;
+  document.getElementById('dpMotif').value  = '';
+  document.getElementById('dpPriorite').value = 'Normal';
+  updateDpStockInfo();
+  openModal('modalDemanderPiece');
+}
+
+async function updateDpStockInfo() {
+  const ref  = document.getElementById('dpPiece').value;
+  const info = document.getElementById('dpStockInfo');
+  if (!ref || !info) { if(info) info.textContent = '—'; return; }
+  const stock = await getStockItems();
+  const item  = stock.find(s => s.ref === ref);
+  if (!item) { info.textContent = '—'; return; }
+  const color = item.qte===0 ? 'var(--danger)' : item.qte<=item.seuil ? 'var(--warn)' : 'var(--accent3)';
+  info.innerHTML = `<span style="color:${color}">${item.qte} ${item.unite||'Pcs'}</span> — Seuil min : ${item.seuil}`;
+}
+
+async function submitDemanderPiece() {
+  if (!currentUser) return;
+  const pieceRef = document.getElementById('dpPiece').value;
+  const qte      = parseInt(document.getElementById('dpQte').value) || 0;
+  const engin    = document.getElementById('dpEngin').value || '—';
+  const destId   = document.getElementById('dpDest').value;
+  const motif    = document.getElementById('dpMotif').value.trim();
+  const prio     = document.getElementById('dpPriorite').value;
+
+  if (!pieceRef) { showToast('⚠ Sélectionnez une pièce'); return; }
+  if (qte <= 0)  { showToast('⚠ Quantité invalide (min 1)'); return; }
+  if (!destId)   { showToast('⚠ Aucun magasinier destinataire disponible'); return; }
+  if (!motif)    { showToast('⚠ Motif requis'); return; }
+
+  const stock = await getStockItems();
+  const item  = stock.find(s => s.ref === pieceRef);
+  if (!item) { showToast('⚠ Pièce introuvable'); return; }
+
+  const dest  = await findUserById(destId);
+  const tasks = await getTaches();
+  const t = {
+    id: await nextTaskId(),
+    type: 'Demande Pièce',
+    sujet: '['+item.ref+'] '+item.nom+' × '+qte+' ('+item.unite+(item.unite?'':'Pcs')+')',
+    description: 'Engin: '+engin+'\nQuantité: '+qte+' '+(item.unite||'Pcs')+'\nMotif: '+motif,
+    fromId: currentUser.id, fromName: currentUser.name, fromRole: currentUser.role,
+    toId: destId, toName: dest.name, toRole: dest.role,
+    priorite: prio, statut: 'Nouvelle',
+    // Payload métier (pour auto-décrément à la validation)
+    pieceRef: item.ref,
+    pieceNom: item.nom,
+    pieceUnite: item.unite || 'Pcs',
+    qteDemandee: qte,
+    enginCible: engin,
+    createdAt: new Date().toISOString(),
+    history: [{ at: new Date().toISOString(), by: currentUser.name, action: 'Création demande' }]
+  };
+  tasks.unshift(t);
+  await saveTaches(tasks);
+  await addHistory({
+    module:'Workflow — Demande Pièce',
+    action:'Demande envoyée au Magasinier',
+    cible: item.ref+' — '+item.nom+' × '+qte,
+    avant:'Stock actuel: '+item.qte+' '+(item.unite||'Pcs'),
+    apres:'Demandé: '+qte+' | Vers: '+dest.name+' ('+dest.role+')',
+    details:'Engin: '+engin+' | Motif: '+motif+' | Prio: '+prio
+  });
+  closeModal('modalDemanderPiece');
+  if (document.getElementById('page-taches')?.classList.contains('active')) renderTaches();
+  refreshTaskBadge();
+  showToast('📦 Demande envoyée à '+dest.name+' — Attente de validation');
+}
+
 async function renderTaches() {
   if (!currentUser) return;
   const tbody   = document.getElementById('tasksTable');
   if (!tbody) return;
   const scopeSel = document.getElementById('taskFilterScope');
   const statSel  = document.getElementById('taskFilterStatut');
-  const isCoord  = currentUser.id === 'coordinateur' || currentUser.id === 'master';
+  const isCoord  = isRole(currentUser,'coordinateur') || isRole(currentUser,'master');
   if (scopeSel) {
     const allOpt = scopeSel.querySelector('option[value="all"]');
     if (allOpt) allOpt.style.display = isCoord ? '' : 'none';
@@ -3437,7 +3794,11 @@ async function renderTaches() {
   tbody.innerHTML = list.map(t => {
     const prioBadge = t.priorite==='Urgent'?'badge-danger':t.priorite==='Normal'?'badge-blue':'badge-gray';
     const statBadge = t.statut==='Terminée'?'badge-ok':t.statut==='En cours'?'badge-warn':t.statut==='Refusée'?'badge-danger':'badge-blue';
-    const typeChip  = t.type==='Demande Intervention' ? '<span class="chip mec" style="cursor:default">⚙ Intervention</span>' : '<span class="chip" style="background:var(--surface3);color:var(--text2);cursor:default">📨 Tâche</span>';
+    const typeChip  = t.type==='Demande Intervention'
+      ? '<span class="chip mec" style="cursor:default">⚙ Intervention</span>'
+      : t.type==='Demande Pièce'
+        ? '<span class="chip" style="background:rgba(6,182,212,.12);color:#06b6d4;cursor:default">📦 Pièce</span>'
+        : '<span class="chip" style="background:var(--surface3);color:var(--text2);cursor:default">📨 Tâche</span>';
     const date = new Date(t.createdAt).toLocaleString('fr-FR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
     return `<tr>
       <td class="mono">${t.id}</td>
@@ -3470,7 +3831,7 @@ async function openTacheDetail(id) {
   document.getElementById('tdDesc').textContent  = t.description || '—';
   document.getElementById('tdReponse').value     = '';
   const isRecipient = currentUser && t.toId === currentUser.id;
-  const isCoord     = currentUser && (currentUser.id === 'coordinateur' || currentUser.id === 'master');
+  const isCoord     = currentUser && (isRole(currentUser,'coordinateur') || isRole(currentUser,'master'));
   const isFinal     = ['Terminée','Refusée'].includes(t.statut);
   const canAct      = (isRecipient || isCoord) && !isFinal;
   document.getElementById('tdBtnProgress').style.display = (canAct && t.statut !== 'En cours') ? '' : 'none';
@@ -3498,6 +3859,44 @@ async function updateTacheStatut(newStatut) {
   if (!t) return;
   const old     = t.statut;
   const reponse = document.getElementById('tdReponse').value.trim();
+
+  // ═══ HOOK DEMANDE PIÈCE : Auto-décrément du stock à la validation ═══
+  // Déclenché UNIQUEMENT si :
+  //  - tâche type "Demande Pièce"
+  //  - nouveau statut = "Terminée"
+  //  - ancien statut ≠ "Terminée" (pour éviter double-décrément)
+  //  - utilisateur courant = Magasinier ou Master
+  if (t.type === 'Demande Pièce' && newStatut === 'Terminée' && old !== 'Terminée' && t.pieceRef) {
+    if (!isRole(currentUser,'magasinier') && !isRole(currentUser,'master')) {
+      showToast('⚠ Seul le Magasinier peut valider une demande pièce');
+      return;
+    }
+    const stock = await getStockItems();
+    const item  = stock.find(s => s.ref === t.pieceRef);
+    if (!item) {
+      showToast('⚠ Pièce '+t.pieceRef+' introuvable dans le stock');
+      return;
+    }
+    if (item.qte < t.qteDemandee) {
+      showToast('⚠ Stock insuffisant : '+item.qte+' disponibles / '+t.qteDemandee+' demandés');
+      return;
+    }
+    const stockAvant = item.qte;
+    item.qte = item.qte - t.qteDemandee;
+    await saveStock(stock);
+    await addHistory({
+      module:'Stock & Magasin',
+      action:'Sortie auto. (validation Demande Pièce)',
+      cible: item.ref+' — '+item.nom,
+      avant:'Qté: '+stockAvant+' '+(item.unite||'Pcs'),
+      apres:'Qté: '+item.qte+' '+(item.unite||'Pcs'),
+      details:'Demande '+t.id+' | '+t.qteDemandee+' '+(item.unite||'Pcs')+' → '+(t.enginCible||'Stock général')+' | Validé par: '+currentUser.name
+    });
+    // Alerte si seuil critique franchi après sortie
+    if (item.qte === 0)         showToast('⚠ '+item.ref+' : RUPTURE DE STOCK après cette sortie');
+    else if (item.qte <= item.seuil) showToast('⚠ '+item.ref+' sous seuil critique : '+item.qte+' restants');
+  }
+
   t.statut = newStatut;
   if (reponse) {
     t.description = (t.description||'') + '\n\n[' + new Date().toLocaleString('fr-FR') + ' — ' + currentUser.name + '] ' + reponse;
@@ -3517,7 +3916,12 @@ async function updateTacheStatut(newStatut) {
   closeModal('modalTacheDetail');
   renderTaches();
   refreshTaskBadge();
-  showToast('✓ Tâche '+t.id+' → '+newStatut);
+  // Si on est sur la page stock, rafraîchir l'affichage
+  if (document.getElementById('page-stock')?.classList.contains('active')) {
+    if (typeof renderStock === 'function') renderStock();
+  }
+  const suffix = (t.type === 'Demande Pièce' && newStatut === 'Terminée') ? ' — Stock décrémenté ✓' : '';
+  showToast('✓ Tâche '+t.id+' → '+newStatut+suffix);
 }
 
 async function reassignTache() {
@@ -3552,9 +3956,13 @@ async function refreshTaskBadge() {
 
 function applyWorkflowAccess() {
   const btn = document.getElementById('btnDemanderInter');
-  if (btn && currentUser) {
-    const allowed = ['master','chef_parc','coordinateur'].includes(currentUser.id);
-    btn.style.display = allowed ? '' : 'none';
+  const btnPiece = document.getElementById('btnDemanderPiece');
+  const btnPieceTab = document.getElementById('btnDemanderPieceTab');
+  if (currentUser) {
+    const allowed = isRole(currentUser,'master') || isRole(currentUser,'chef_parc') || isRole(currentUser,'coordinateur');
+    if (btn)         btn.style.display         = allowed ? '' : 'none';
+    if (btnPiece)    btnPiece.style.display    = allowed ? '' : 'none';
+    if (btnPieceTab) btnPieceTab.style.display = allowed ? '' : 'none';
   }
   refreshTaskBadge();
 }
@@ -3621,6 +4029,14 @@ window.regenerateAllCodes   = regenerateAllCodes;
 window.renderAdminUsers     = renderAdminUsers;
 window.openDemanderIntervention  = openDemanderIntervention;
 window.submitDemanderIntervention= submitDemanderIntervention;
+window.openDemanderPiece         = openDemanderPiece;
+window.submitDemanderPiece       = submitDemanderPiece;
+window.updateDpStockInfo         = updateDpStockInfo;
+window.openNewUser               = openNewUser;
+window.saveNewUser               = saveNewUser;
+window.onNuRoleChange            = onNuRoleChange;
+window.nuGenerateCode            = nuGenerateCode;
+window.deleteUser                = deleteUser;
 window.openAssignerTache    = openAssignerTache;
 window.submitAssignerTache  = submitAssignerTache;
 window.renderTaches         = renderTaches;
