@@ -2600,6 +2600,7 @@ async function doLogin() {
   document.getElementById('userNameDisplay').textContent = user.name;
   document.getElementById('userRoleDisplay').textContent = user.role;
   applyAccessControl(user);
+  applyWorkflowAccess();
   showPage(user.pages[0]);
   showToast('✓ Bienvenue, ' + user.name + ' — ' + user.role);
 }
@@ -3971,6 +3972,7 @@ function applyWorkflowAccess() {
 const _origShowPage = showPage;
 window.showPage = function(id) {
   _origShowPage(id);
+  applyWorkflowAccess();  // ← Ré-applique la visibilité des boutons workflow à chaque page
   if (id === 'taches') renderTaches();
 };
 
