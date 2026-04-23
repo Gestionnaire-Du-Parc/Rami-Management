@@ -1248,7 +1248,7 @@
         <div class="panel">
           <div class="panel-header">
             <div class="panel-title">🔧 Ordres de Travail</div>
-            <button class="btn btn-primary btn-sm" onclick="openModal('modalIntervention')">+ Nouvelle Intervention</button>
+            <button class="btn btn-primary btn-sm" onclick="openNewOT()">+ Nouvelle Intervention</button>
           </div>
           <div class="table-wrap">
             <table>
@@ -1776,6 +1776,7 @@
           <div class="panel-header">
             <div class="panel-title">👥 Gestion des Sessions & Codes d'Accès</div>
             <div style="display:flex;gap:8px;margin-left:auto">
+              <button class="btn btn-ghost btn-sm" onclick="openBackupModal()" style="color:#10b981;border-color:rgba(16,185,129,.4)">💾 Backup / Restore</button>
               <button class="btn btn-success btn-sm" onclick="openNewUser()">+ Nouvel Utilisateur</button>
               <button class="btn btn-primary btn-sm" onclick="regenerateAllCodes()">↺ Régénérer Tous</button>
             </div>
@@ -1897,9 +1898,7 @@
     <div class="form-grid">
       <div class="form-group"><label>Engin</label>
         <select id="otNewEngin">
-          <option>ENG-007 — Bulldozer D6T</option>
-          <option>ENG-012 — Pelle 320D</option>
-          <option>ENG-019 — Compacteur 430E</option>
+          <!-- Populated dynamically by openNewOT -->
         </select>
       </div>
       <div class="form-group"><label>Section Atelier</label>
@@ -2416,6 +2415,142 @@
       <button class="btn btn-danger btn-sm" id="tdBtnRefuse" onclick="updateTacheStatut('Refusée')">✕ Refuser</button>
       <button class="btn btn-primary btn-sm" id="tdBtnProgress" onclick="updateTacheStatut('En cours')">▶ Prendre en charge</button>
       <button class="btn btn-success btn-sm" id="tdBtnDone" onclick="updateTacheStatut('Terminée')">✓ Terminer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Fiche complète Engin (toutes les infos + historique) -->
+<div class="modal-overlay" id="modalEnginDetail">
+  <div class="modal" style="max-width:1100px;width:95%">
+    <div class="modal-header">
+      <div class="modal-title">🚧 Fiche Complète — <span id="edId" style="color:var(--accent)">—</span></div>
+      <button class="modal-close" onclick="closeModal('modalEnginDetail')">✕</button>
+    </div>
+    <div style="padding:16px;display:flex;flex-direction:column;gap:16px;max-height:75vh;overflow-y:auto">
+      <!-- Bloc 1: Infos générales -->
+      <div class="panel" style="margin:0">
+        <div class="panel-header"><div class="panel-title">📋 Informations Générales</div>
+          <span class="badge" id="edStatutBadge" style="margin-left:auto">—</span>
+        </div>
+        <div style="padding:14px;display:grid;grid-template-columns:repeat(4,1fr);gap:14px">
+          <div><div class="stat-label">N° Interne</div><div style="font-family:var(--font-mono);font-weight:700;margin-top:4px;color:var(--accent)" id="edInfoId">—</div></div>
+          <div><div class="stat-label">Modèle</div><div style="font-weight:600;margin-top:4px;font-size:13px" id="edInfoName">—</div></div>
+          <div><div class="stat-label">Type</div><div style="margin-top:4px;font-size:12px" id="edInfoType">—</div></div>
+          <div><div class="stat-label">Année</div><div style="font-family:var(--font-mono);margin-top:4px" id="edInfoAnnee">—</div></div>
+          <div><div class="stat-label">N° Châssis</div><div style="font-family:var(--font-mono);margin-top:4px;font-size:11px;word-break:break-all" id="edInfoChassis">—</div></div>
+          <div><div class="stat-label">N° Série</div><div style="font-family:var(--font-mono);margin-top:4px;font-size:11px;word-break:break-all" id="edInfoSerie">—</div></div>
+          <div><div class="stat-label">KM / Heures</div><div style="font-family:var(--font-mono);margin-top:4px;font-weight:700" id="edInfoHeures">—</div></div>
+          <div><div class="stat-label">Chantier</div><div style="margin-top:4px;font-size:12px" id="edInfoChantier">—</div></div>
+        </div>
+      </div>
+
+      <!-- Bloc 2: Stats rapides -->
+      <div class="stats-row" style="margin:0">
+        <div class="stat-card accent"><div class="stat-label">Total Interventions</div><div class="stat-value" id="edStatOTTotal">0</div></div>
+        <div class="stat-card red"><div class="stat-label">En cours</div><div class="stat-value" id="edStatOTActif">0</div></div>
+        <div class="stat-card green"><div class="stat-label">Terminées</div><div class="stat-value" id="edStatOTDone">0</div></div>
+        <div class="stat-card blue"><div class="stat-label">Demandes Pièces</div><div class="stat-value" id="edStatPieces">0</div></div>
+      </div>
+
+      <!-- Bloc 3: Historique interventions -->
+      <div class="panel" style="margin:0">
+        <div class="panel-header"><div class="panel-title">🔧 Historique des Interventions</div></div>
+        <div class="table-wrap" style="max-height:280px;overflow-y:auto">
+          <table>
+            <thead><tr><th>OT</th><th>Date</th><th>Section</th><th>Panne</th><th>Technicien</th><th>Priorité</th><th>Statut</th></tr></thead>
+            <tbody id="edInterventionsTable">
+              <tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text3);font-family:var(--font-mono);font-size:11px">Chargement...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Bloc 4: Demandes de pièces liées à cet engin -->
+      <div class="panel" style="margin:0">
+        <div class="panel-header"><div class="panel-title">📦 Demandes de Pièces Liées</div></div>
+        <div class="table-wrap" style="max-height:220px;overflow-y:auto">
+          <table>
+            <thead><tr><th>Tâche</th><th>Date</th><th>Pièce</th><th>Qté</th><th>Demandeur</th><th>Statut</th></tr></thead>
+            <tbody id="edPiecesTable">
+              <tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text3);font-family:var(--font-mono);font-size:11px">Aucune demande</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Bloc 5: Historique global filtré -->
+      <div class="panel" style="margin:0">
+        <div class="panel-header"><div class="panel-title">📜 Traçabilité Complète</div></div>
+        <div class="table-wrap" style="max-height:260px;overflow-y:auto">
+          <table>
+            <thead><tr><th>Date</th><th>Utilisateur</th><th>Module</th><th>Action</th><th style="color:var(--danger)">Avant</th><th style="color:var(--accent3)">Après</th></tr></thead>
+            <tbody id="edHistoryTable">
+              <tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text3);font-family:var(--font-mono);font-size:11px">Chargement...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modalEnginDetail')">Fermer</button>
+      <button class="btn btn-ghost btn-sm" id="edBtnEdit" onclick="editFromDetail()" style="display:none">✎ Modifier la fiche</button>
+      <button class="btn btn-danger btn-sm" id="edBtnDelete" onclick="deleteFromDetail()" style="display:none">🗑 Supprimer l'engin</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Backup / Restauration (Master Admin) -->
+<div class="modal-overlay" id="modalBackup">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">💾 Sauvegarde & Restauration</div>
+      <button class="modal-close" onclick="closeModal('modalBackup')">✕</button>
+    </div>
+    <div style="padding:16px;display:flex;flex-direction:column;gap:14px">
+      <div class="alert alert-warn" style="margin:0">⚠ Zone sensible — Réservée Master Admin. Les restaurations écrasent TOUTES les données actuelles.</div>
+
+      <!-- Export -->
+      <div class="panel" style="margin:0">
+        <div class="panel-header"><div class="panel-title">⬇ Export Sauvegarde</div></div>
+        <div style="padding:14px;display:flex;flex-direction:column;gap:10px">
+          <div style="font-size:12px;color:var(--text2);line-height:1.5">Télécharge un fichier JSON contenant toutes les données : utilisateurs, engins, interventions, stock, tâches, historique, journal. Gardez ce fichier en lieu sûr.</div>
+          <div id="backupStatsPreview" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;font-family:var(--font-mono);font-size:11px">
+            <div style="background:var(--surface3);padding:8px;border-radius:3px">Users: <span id="bkUsers" style="color:var(--accent);font-weight:700">0</span></div>
+            <div style="background:var(--surface3);padding:8px;border-radius:3px">Engins: <span id="bkEngins" style="color:var(--accent);font-weight:700">0</span></div>
+            <div style="background:var(--surface3);padding:8px;border-radius:3px">Interv.: <span id="bkInter" style="color:var(--accent);font-weight:700">0</span></div>
+            <div style="background:var(--surface3);padding:8px;border-radius:3px">Stock: <span id="bkStock" style="color:var(--accent);font-weight:700">0</span></div>
+            <div style="background:var(--surface3);padding:8px;border-radius:3px">Tâches: <span id="bkTaches" style="color:var(--accent);font-weight:700">0</span></div>
+            <div style="background:var(--surface3);padding:8px;border-radius:3px">Histo.: <span id="bkHist" style="color:var(--accent);font-weight:700">0</span></div>
+            <div style="background:var(--surface3);padding:8px;border-radius:3px">Logs: <span id="bkLog" style="color:var(--accent);font-weight:700">0</span></div>
+            <div style="background:var(--surface3);padding:8px;border-radius:3px">Taille: <span id="bkSize" style="color:var(--accent);font-weight:700">—</span></div>
+          </div>
+          <button class="btn btn-success" onclick="exportBackup()">⬇ Télécharger sauvegarde JSON</button>
+        </div>
+      </div>
+
+      <!-- Restore -->
+      <div class="panel" style="margin:0">
+        <div class="panel-header"><div class="panel-title">⬆ Restauration depuis Sauvegarde</div></div>
+        <div style="padding:14px;display:flex;flex-direction:column;gap:10px">
+          <div style="font-size:12px;color:var(--text2);line-height:1.5">Sélectionnez un fichier JSON de sauvegarde. <b style="color:var(--danger)">ATTENTION :</b> toutes les données actuelles seront remplacées.</div>
+          <input type="file" id="backupFileInput" accept=".json,application/json"
+            style="padding:10px;background:var(--surface3);border:1px solid var(--border2);color:var(--text);border-radius:3px;font-family:var(--font-mono);font-size:11px">
+          <div id="backupRestorePreview" style="display:none;background:rgba(6,182,212,.08);border:1px solid rgba(6,182,212,.25);padding:10px;border-radius:3px;font-family:var(--font-mono);font-size:11px;color:var(--text2)"></div>
+          <button class="btn btn-danger" onclick="restoreBackup()">⚠ Restaurer (écrasement complet)</button>
+        </div>
+      </div>
+
+      <!-- Reset -->
+      <div class="panel" style="margin:0;border-color:rgba(239,68,68,.4)">
+        <div class="panel-header"><div class="panel-title" style="color:var(--danger)">🗑 Zone Dangereuse — Reset Total</div></div>
+        <div style="padding:14px;display:flex;flex-direction:column;gap:10px">
+          <div style="font-size:12px;color:var(--text2);line-height:1.5">Efface TOUTES les données sauf les 5 comptes de base (master/atelier/parc/coord/magasinier). À utiliser uniquement pour démarrer proprement.</div>
+          <button class="btn btn-danger" onclick="resetAllData()">🗑 Réinitialiser toutes les données</button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modalBackup')">Fermer</button>
     </div>
   </div>
 </div>
@@ -3065,9 +3200,14 @@ async function renderEngins(filter) {
   const grid = document.getElementById('enginGrid');
   const allEngins = await getEngins();
   const list = filter ? allEngins.filter(e => e.statut === filter) : allEngins;
-  const canEdit = currentUser && ['master','chef_parc','coordinateur'].includes(currentUser.id);
+  const canEdit   = currentUser && (isRole(currentUser,'master') || isRole(currentUser,'chef_parc') || isRole(currentUser,'coordinateur'));
+  const canDelete = currentUser && (isRole(currentUser,'master') || isRole(currentUser,'chef_parc'));
+  if (!list.length) {
+    grid.innerHTML = `<div style="grid-column:1/-1;padding:40px;text-align:center;color:var(--text3);font-family:var(--font-mono);font-size:12px">Aucun engin enregistré</div>`;
+    return;
+  }
   grid.innerHTML = list.map(e => `
-    <div class="engin-card ${e.statut}">
+    <div class="engin-card ${e.statut}" style="cursor:pointer;position:relative" onclick="openEnginDetail('${e.id}')" title="Cliquer pour voir la fiche complète">
       <div class="engin-top">
         <span class="engin-id">${e.id}</span>
         <span class="badge ${e.statut==='dispo'?'badge-ok':e.statut==='panne'?'badge-danger':'badge-warn'}">
@@ -3077,13 +3217,15 @@ async function renderEngins(filter) {
       <div class="engin-name">${e.name}</div>
       <div class="engin-meta">${e.type} · ${e.annee||'—'}</div>
       <div class="engin-meta" style="margin-top:4px">⏱ ${e.heures} &nbsp;|&nbsp; 📍 ${e.chantier}</div>
-      ${canEdit ? `<div style="display:flex;gap:5px;margin-top:8px">
+      <div class="engin-meta" style="margin-top:4px;color:var(--accent2);font-size:10px">📄 Cliquer pour voir la fiche complète & historique</div>
+      ${canEdit ? `<div style="display:flex;gap:5px;margin-top:8px" onclick="event.stopPropagation()">
         <button class="btn btn-ghost btn-sm" style="flex:1;font-size:10px" onclick="openEditEngin('${e.id}')">✎ Modifier</button>
         <select style="flex:1;font-size:10px;padding:3px 4px;background:var(--surface3);border:1px solid var(--border2);color:var(--text);border-radius:3px;outline:none" onchange="changeEnginStatut('${e.id}',this.value)">
           <option value="dispo" ${e.statut==='dispo'?'selected':''}>Disponible</option>
           <option value="panne" ${e.statut==='panne'?'selected':''}>En panne</option>
           <option value="maintenance" ${e.statut==='maintenance'?'selected':''}>Maintenance</option>
         </select>
+        ${canDelete ? `<button class="btn btn-ghost btn-sm" style="font-size:10px;color:var(--danger);border-color:rgba(239,68,68,.4);width:32px" onclick="deleteEngin('${e.id}')" title="Supprimer cet engin">🗑</button>` : ''}
       </div>` : ''}
     </div>`).join('');
 }
@@ -3145,7 +3287,7 @@ async function changeEnginStatut(id, newStatut) {
 // ═══ INTERVENTIONS ═══
 async function renderInterventions() {
   const list    = await getInterventions();
-  const canEdit = currentUser && ['master','chef_atelier','coordinateur'].includes(currentUser.id);
+  const canEdit = currentUser && (isRole(currentUser,'master') || isRole(currentUser,'chef_atelier') || isRole(currentUser,'coordinateur'));
   const tbody   = document.getElementById('interventionTable');
   if (!tbody) return;
   tbody.innerHTML = list.map(i => `<tr>
@@ -3164,7 +3306,7 @@ async function renderInterventions() {
         <option ${i.statut==='En attente pièce'?'selected':''}>En attente pièce</option>
       </select>` : `<span class="badge ${i.statut==='Terminée'?'badge-ok':i.statut==='Bloquée'?'badge-danger':'badge-warn'}">${i.statut}</span>`}
     </td>
-    <td>${canEdit ? `<button class="btn btn-ghost btn-sm" onclick="openEditOT('${i.id}')">✎ Fiche</button>` : `<button class="btn btn-ghost btn-sm" onclick="openEditOT('${i.id}')">Voir</button>`}</td>
+    <td>${canEdit ? `<button class="btn btn-ghost btn-sm" onclick="openEditOT('${i.id}')">✎ Fiche</button>` : `<button class="btn btn-ghost btn-sm" onclick="openEditOT('${i.id}')">Voir</button>`}${canEdit ? ` <button class="btn btn-ghost btn-sm" onclick="deleteIntervention('${i.id}')" style="color:var(--danger);border-color:rgba(239,68,68,.4)" title="Supprimer cet OT">🗑</button>` : ''}</td>
   </tr>`).join('');
 }
 
@@ -3186,7 +3328,7 @@ async function openEditOT(id) {
   const ot   = list.find(i => i.id === id);
   if (!ot) return;
   editingOTId = id;
-  const canEdit = currentUser && ['master','chef_atelier','coordinateur'].includes(currentUser.id);
+  const canEdit = currentUser && (isRole(currentUser,'master') || isRole(currentUser,'chef_atelier') || isRole(currentUser,'coordinateur'));
   document.getElementById('otId').textContent      = ot.id;
   document.getElementById('otEngin').textContent   = ot.engin;
   document.getElementById('otSection').textContent = ot.section;
@@ -3222,7 +3364,7 @@ async function saveOTEdit() {
 // ═══ STOCK ═══
 async function renderStock() {
   const list    = await getStockItems();
-  const canEdit = currentUser && ['master','magasinier','coordinateur'].includes(currentUser.id);
+  const canEdit = currentUser && (isRole(currentUser,'master') || isRole(currentUser,'magasinier') || isRole(currentUser,'coordinateur'));
   const tbody   = document.getElementById('stockTable');
   if (!tbody) return;
   tbody.innerHTML = list.map(s => {
@@ -3238,7 +3380,7 @@ async function renderStock() {
       <td class="mono">${s.prix} MAD</td>
       <td>${s.fourn}</td>
       <td><span class="badge ${stClass}">${st}</span></td>
-      ${canEdit ? `<td><button class="btn btn-ghost btn-sm" onclick="openEditStock('${s.ref}')">✎</button></td>` : '<td></td>'}
+      ${canEdit ? `<td style="white-space:nowrap"><button class="btn btn-ghost btn-sm" onclick="openEditStock('${s.ref}')" title="Modifier">✎</button> <button class="btn btn-ghost btn-sm" onclick="deleteStockItem('${s.ref}')" style="color:var(--danger);border-color:rgba(239,68,68,.4)" title="Supprimer">🗑</button></td>` : '<td></td>'}
     </tr>`;
   }).join('');
 }
@@ -3968,6 +4110,349 @@ function applyWorkflowAccess() {
   refreshTaskBadge();
 }
 
+// ═══════════════════════════════════════════════
+// FICHE ENGIN COMPLÈTE (clic sur carte engin)
+// ═══════════════════════════════════════════════
+let currentEnginId = null;
+
+function matchesEngin(str, enginId, enginName) {
+  if (!str) return false;
+  const s = String(str).toLowerCase();
+  return s.includes(String(enginId).toLowerCase()) ||
+         (enginName && s.includes(String(enginName).toLowerCase().slice(0,10)));
+}
+
+async function openEnginDetail(id) {
+  const eng = (await getEngins()).find(e => e.id === id);
+  if (!eng) { showToast('⚠ Engin introuvable'); return; }
+  currentEnginId = id;
+
+  // Header
+  document.getElementById('edId').textContent = eng.id + ' — ' + eng.name;
+  const sBadge = document.getElementById('edStatutBadge');
+  sBadge.textContent = eng.statut === 'dispo' ? 'Disponible' : eng.statut === 'panne' ? 'En panne' : 'Maintenance';
+  sBadge.className = 'badge ' + (eng.statut === 'dispo' ? 'badge-ok' : eng.statut === 'panne' ? 'badge-danger' : 'badge-warn');
+
+  // Infos générales
+  document.getElementById('edInfoId').textContent      = eng.id;
+  document.getElementById('edInfoName').textContent    = eng.name;
+  document.getElementById('edInfoType').textContent    = eng.type || '—';
+  document.getElementById('edInfoAnnee').textContent   = eng.annee || '—';
+  document.getElementById('edInfoChassis').textContent = eng.chassis || '—';
+  document.getElementById('edInfoSerie').textContent   = eng.serie || '—';
+  document.getElementById('edInfoHeures').textContent  = eng.heures || '—';
+  document.getElementById('edInfoChantier').textContent= eng.chantier || '—';
+
+  // Interventions liées
+  const allInter = await getInterventions();
+  const engInter = allInter.filter(i => matchesEngin(i.engin, eng.id, eng.name));
+  document.getElementById('edStatOTTotal').textContent = engInter.length;
+  document.getElementById('edStatOTActif').textContent = engInter.filter(i => i.statut !== 'Terminée').length;
+  document.getElementById('edStatOTDone').textContent  = engInter.filter(i => i.statut === 'Terminée').length;
+
+  const tInter = document.getElementById('edInterventionsTable');
+  if (!engInter.length) {
+    tInter.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text3);font-family:var(--font-mono);font-size:11px">Aucune intervention enregistrée pour cet engin</td></tr>';
+  } else {
+    tInter.innerHTML = engInter.map(i => {
+      const statBadge = i.statut === 'Terminée' ? 'badge-ok' : i.statut === 'Bloquée' ? 'badge-danger' : 'badge-warn';
+      const prioBadge = i.priorite === 'Urgent' ? 'badge-danger' : i.priorite === 'Normal' ? 'badge-blue' : 'badge-gray';
+      return `<tr style="cursor:pointer" onclick="closeModal('modalEnginDetail');openEditOT('${i.id}')">
+        <td class="mono">${i.id}</td>
+        <td class="mono" style="font-size:10px">${i.date}</td>
+        <td>${i.section}</td>
+        <td style="max-width:240px;font-size:11px">${i.panne||'—'}</td>
+        <td style="font-size:11px">${i.tech||'—'}</td>
+        <td><span class="badge ${prioBadge}">${i.priorite||'—'}</span></td>
+        <td><span class="badge ${statBadge}">${i.statut}</span></td>
+      </tr>`;
+    }).join('');
+  }
+
+  // Demandes de pièces liées
+  const allTaches = await getTaches();
+  const engPieces = allTaches.filter(t => t.type === 'Demande Pièce' && matchesEngin(t.enginCible, eng.id, eng.name));
+  document.getElementById('edStatPieces').textContent = engPieces.length;
+  const tPieces = document.getElementById('edPiecesTable');
+  if (!engPieces.length) {
+    tPieces.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text3);font-family:var(--font-mono);font-size:11px">Aucune demande de pièce enregistrée</td></tr>';
+  } else {
+    tPieces.innerHTML = engPieces.map(t => {
+      const statBadge = t.statut === 'Terminée' ? 'badge-ok' : t.statut === 'Refusée' ? 'badge-danger' : 'badge-warn';
+      const d = new Date(t.createdAt);
+      return `<tr>
+        <td class="mono">${t.id}</td>
+        <td class="mono" style="font-size:10px">${d.toLocaleDateString('fr-FR')}</td>
+        <td style="font-size:11px">${t.pieceRef||'—'} — ${t.pieceNom||'—'}</td>
+        <td class="mono" style="font-weight:700">${t.qteDemandee||0} ${t.pieceUnite||''}</td>
+        <td style="font-size:11px">${t.fromName}</td>
+        <td><span class="badge ${statBadge}">${t.statut}</span></td>
+      </tr>`;
+    }).join('');
+  }
+
+  // Historique traçabilité
+  const allHist = await getHistory();
+  const engHist = allHist.filter(h => matchesEngin(h.cible, eng.id, eng.name));
+  const tHist = document.getElementById('edHistoryTable');
+  if (!engHist.length) {
+    tHist.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text3);font-family:var(--font-mono);font-size:11px">Aucun évènement tracé</td></tr>';
+  } else {
+    tHist.innerHTML = engHist.slice(0, 50).map(h => `<tr>
+      <td class="mono" style="font-size:10px">${h.date||'—'}</td>
+      <td style="font-size:11px">${h.user||'—'}</td>
+      <td style="font-size:11px">${h.module||'—'}</td>
+      <td style="font-size:11px">${h.action||'—'}</td>
+      <td style="color:var(--danger);font-size:10px;max-width:160px;word-break:break-word">${h.avant||'—'}</td>
+      <td style="color:var(--accent3);font-size:10px;max-width:160px;word-break:break-word">${h.apres||'—'}</td>
+    </tr>`).join('');
+  }
+
+  // Boutons actions (selon rôle)
+  const canEdit   = currentUser && (isRole(currentUser,'master') || isRole(currentUser,'chef_parc') || isRole(currentUser,'coordinateur'));
+  const canDelete = currentUser && (isRole(currentUser,'master') || isRole(currentUser,'chef_parc'));
+  document.getElementById('edBtnEdit').style.display   = canEdit   ? '' : 'none';
+  document.getElementById('edBtnDelete').style.display = canDelete ? '' : 'none';
+
+  openModal('modalEnginDetail');
+}
+
+async function editFromDetail() {
+  if (!currentEnginId) return;
+  closeModal('modalEnginDetail');
+  await openEditEngin(currentEnginId);
+}
+
+async function deleteFromDetail() {
+  if (!currentEnginId) return;
+  closeModal('modalEnginDetail');
+  await deleteEngin(currentEnginId);
+}
+
+// ═══════════════════════════════════════════════
+// SUPPRESSIONS
+// ═══════════════════════════════════════════════
+async function deleteEngin(id) {
+  if (!currentUser) return;
+  if (!(isRole(currentUser,'master') || isRole(currentUser,'chef_parc'))) { showToast('⚠ Accès refusé'); return; }
+  const engs = await getEngins();
+  const eng = engs.find(e => e.id === id);
+  if (!eng) return;
+
+  // Compter les interventions liées pour avertir
+  const allInter = await getInterventions();
+  const linked = allInter.filter(i => matchesEngin(i.engin, eng.id, eng.name)).length;
+  const warnMsg = linked > 0
+    ? '⚠ SUPPRIMER l\'engin "'+eng.id+' — '+eng.name+'" ?\n\n• '+linked+' intervention(s) lui sont rattachées (elles seront conservées)\n• Cette action est définitive\n\nConfirmer ?'
+    : '⚠ SUPPRIMER l\'engin "'+eng.id+' — '+eng.name+'" ?\n\nCette action est définitive. Confirmer ?';
+
+  if (!confirm(warnMsg)) return;
+  const filtered = engs.filter(e => e.id !== id);
+  await saveEngins(filtered);
+  await addHistory({ module:'Parc Engins', action:'Suppression engin', cible:eng.id+' — '+eng.name, avant:JSON.stringify(eng), apres:'—', details:'Par: '+currentUser.name+(linked>0?' | '+linked+' OT lié(s) conservé(s)':'') });
+  showToast('🗑 Engin '+eng.id+' supprimé');
+  renderEngins('');
+}
+
+async function deleteIntervention(id) {
+  if (!currentUser) return;
+  if (!(isRole(currentUser,'master') || isRole(currentUser,'chef_atelier') || isRole(currentUser,'coordinateur'))) { showToast('⚠ Accès refusé'); return; }
+  const list = await getInterventions();
+  const ot = list.find(i => i.id === id);
+  if (!ot) return;
+  if (!confirm('⚠ SUPPRIMER l\'Ordre de Travail "'+ot.id+' — '+ot.engin+'" ?\n\nCette action est définitive.\n\nConfirmer ?')) return;
+  const filtered = list.filter(i => i.id !== id);
+  await saveInterventions(filtered);
+  await addHistory({ module:'Atelier — Interventions', action:'Suppression OT', cible:ot.id+' — '+ot.engin, avant:JSON.stringify(ot), apres:'—', details:'Par: '+currentUser.name });
+  showToast('🗑 OT '+ot.id+' supprimé');
+  renderInterventions();
+}
+
+async function deleteStockItem(ref) {
+  if (!currentUser) return;
+  if (!(isRole(currentUser,'master') || isRole(currentUser,'magasinier') || isRole(currentUser,'coordinateur'))) { showToast('⚠ Accès refusé'); return; }
+  const list = await getStockItems();
+  const item = list.find(i => i.ref === ref);
+  if (!item) return;
+  if (!confirm('⚠ SUPPRIMER la pièce "'+item.ref+' — '+item.nom+'" du stock ?\n\nQté actuelle : '+item.qte+' '+(item.unite||'Pcs')+'\n\nCette action est définitive. Confirmer ?')) return;
+  const filtered = list.filter(i => i.ref !== ref);
+  await saveStock(filtered);
+  await addHistory({ module:'Stock & Magasin', action:'Suppression pièce', cible:item.ref+' — '+item.nom, avant:'Qté: '+item.qte+' | Prix: '+item.prix+' MAD', apres:'—', details:'Par: '+currentUser.name });
+  showToast('🗑 Pièce '+item.ref+' supprimée');
+  renderStock();
+}
+
+// ═══════════════════════════════════════════════
+// DROPDOWN ENGIN DYNAMIQUE (Nouvelle Intervention)
+// ═══════════════════════════════════════════════
+async function openNewOT() {
+  const engs = await getEngins();
+  const sel  = document.getElementById('otNewEngin');
+  if (!engs.length) {
+    sel.innerHTML = '<option value="">⚠ Aucun engin enregistré</option>';
+  } else {
+    sel.innerHTML = engs.map(e => `<option value="${e.id} — ${e.name}">${e.id} — ${e.name}</option>`).join('');
+  }
+  openModal('modalIntervention');
+}
+
+// ═══════════════════════════════════════════════
+// BACKUP / RESTAURATION (Master Admin uniquement)
+// ═══════════════════════════════════════════════
+async function openBackupModal() {
+  if (!currentUser || !isRole(currentUser,'master')) { showToast('⚠ Accès Master uniquement'); return; }
+  // Afficher stats
+  const [users, engins, inter, stock, taches, hist, log] = await Promise.all([
+    getUsers(), getEngins(), getInterventions(), getStockItems(), getTaches(), getHistory(), getLog()
+  ]);
+  document.getElementById('bkUsers').textContent  = users.length;
+  document.getElementById('bkEngins').textContent = engins.length;
+  document.getElementById('bkInter').textContent  = inter.length;
+  document.getElementById('bkStock').textContent  = stock.length;
+  document.getElementById('bkTaches').textContent = taches.length;
+  document.getElementById('bkHist').textContent   = hist.length;
+  document.getElementById('bkLog').textContent    = log.length;
+  const snapshot = { users, engins, interventions:inter, stock, taches, historique:hist, log };
+  const sizeKb = Math.round(JSON.stringify(snapshot).length / 1024);
+  document.getElementById('bkSize').textContent = sizeKb + ' Ko';
+
+  // Reset file input
+  document.getElementById('backupFileInput').value = '';
+  document.getElementById('backupRestorePreview').style.display = 'none';
+
+  // Hook file preview
+  document.getElementById('backupFileInput').onchange = function(ev) {
+    const file = ev.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        const data = JSON.parse(e.target.result);
+        const preview = document.getElementById('backupRestorePreview');
+        preview.style.display = '';
+        preview.innerHTML =
+          '<b style="color:var(--accent)">📄 Fichier valide :</b><br>'+
+          '• Version : '+(data.version||'legacy')+'<br>'+
+          '• Date export : '+(data.exportedAt ? new Date(data.exportedAt).toLocaleString('fr-FR') : '—')+'<br>'+
+          '• Utilisateurs : '+((data.users||[]).length)+' | Engins : '+((data.engins||[]).length)+' | Interv. : '+((data.interventions||[]).length)+'<br>'+
+          '• Stock : '+((data.stock||[]).length)+' | Tâches : '+((data.taches||[]).length)+' | Historique : '+((data.historique||[]).length)+' | Logs : '+((data.log||[]).length);
+      } catch (err) {
+        const preview = document.getElementById('backupRestorePreview');
+        preview.style.display = '';
+        preview.style.color = 'var(--danger)';
+        preview.innerHTML = '✗ Fichier invalide : '+err.message;
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  openModal('modalBackup');
+}
+
+async function exportBackup() {
+  if (!currentUser || !isRole(currentUser,'master')) { showToast('⚠ Accès Master uniquement'); return; }
+  try {
+    const [users, engins, inter, stock, taches, hist, log] = await Promise.all([
+      getUsers(), getEngins(), getInterventions(), getStockItems(), getTaches(), getHistory(), getLog()
+    ]);
+    const snapshot = {
+      version: '1.0',
+      exportedAt: new Date().toISOString(),
+      exportedBy: currentUser.name,
+      users, engins, interventions:inter, stock, taches, historique:hist, log
+    };
+    const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type:'application/json' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    const ts   = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
+    a.href     = url;
+    a.download = 'gmao-backup-'+ts+'.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+    await addHistory({ module:'Admin', action:'Export sauvegarde', cible:'gmao-backup-'+ts+'.json', avant:'—', apres:'Users:'+users.length+' | Engins:'+engins.length+' | OT:'+inter.length+' | Stock:'+stock.length, details:'Par: '+currentUser.name });
+    showToast('✓ Sauvegarde téléchargée');
+  } catch (err) {
+    showToast('✗ Erreur export : '+err.message);
+  }
+}
+
+async function restoreBackup() {
+  if (!currentUser || !isRole(currentUser,'master')) { showToast('⚠ Accès Master uniquement'); return; }
+  const fileInput = document.getElementById('backupFileInput');
+  if (!fileInput.files || !fileInput.files[0]) { showToast('⚠ Sélectionnez un fichier JSON'); return; }
+
+  if (!confirm('⚠⚠ RESTAURATION — ATTENTION ⚠⚠\n\nToutes les données actuelles (utilisateurs, engins, OT, stock, tâches, historique) seront REMPLACÉES par celles du fichier.\n\nCette action est IRRÉVERSIBLE.\n\nConfirmer ?')) return;
+  if (!confirm('Dernière confirmation : continuer la restauration ?')) return;
+
+  const file = fileInput.files[0];
+  try {
+    const text = await file.text();
+    const data = JSON.parse(text);
+    // Validation basique
+    if (!Array.isArray(data.users) || !Array.isArray(data.engins)) {
+      showToast('✗ Fichier invalide : structure incorrecte');
+      return;
+    }
+    // Garantir qu'il reste au moins un master dans les données restaurées
+    const hasMaster = data.users.some(u => (u.baseRole||u.id) === 'master');
+    if (!hasMaster) {
+      if (!confirm('⚠ Ce fichier ne contient aucun compte Master ! Vous risquez de perdre l\'accès admin.\n\nContinuer quand même ?')) return;
+    }
+
+    // Écraser toutes les collections
+    await saveUsers(data.users);
+    await saveEngins(data.engins);
+    await saveInterventions(data.interventions || []);
+    await saveStock(data.stock || []);
+    await saveTaches(data.taches || []);
+    await fsSetMain('gmao_history', data.historique || []);
+    _histCache = data.historique || [];
+    await fsSetMain('gmao_log', data.log || []);
+    _logCache = data.log || [];
+
+    await addLog({ user:currentUser.name, role:'Master Admin', action:'Restauration sauvegarde — '+file.name, result:'Admin' });
+    showToast('✓ Restauration terminée — '+data.users.length+' users, '+data.engins.length+' engins');
+    closeModal('modalBackup');
+    // Rafraîchir la page courante
+    if (typeof renderAdminUsers === 'function') renderAdminUsers();
+    if (typeof renderEngins === 'function') renderEngins('');
+    if (typeof renderStock === 'function') renderStock();
+    if (typeof renderInterventions === 'function') renderInterventions();
+  } catch (err) {
+    showToast('✗ Erreur restauration : '+err.message);
+  }
+}
+
+async function resetAllData() {
+  if (!currentUser || !isRole(currentUser,'master')) { showToast('⚠ Accès Master uniquement'); return; }
+  if (!confirm('⚠⚠ RESET TOTAL ⚠⚠\n\nToutes les données seront EFFACÉES :\n• Tous les engins\n• Toutes les interventions\n• Tout le stock\n• Toutes les tâches\n• Tout l\'historique\n• Tous les utilisateurs créés (sauf les 5 comptes de base)\n\nCONFIRMER ?')) return;
+  if (!confirm('Êtes-vous ABSOLUMENT certain ?\n\nCette action est IRRÉVERSIBLE.')) return;
+
+  try {
+    // Conserver uniquement les 5 comptes de base
+    const baseIds = ['master','chef_atelier','chef_parc','coordinateur','magasinier'];
+    const users   = await getUsers();
+    const keep    = users.filter(u => baseIds.includes(u.id));
+    await saveUsers(keep);
+    await saveEngins([]);
+    await saveInterventions([]);
+    await saveStock([]);
+    await saveTaches([]);
+    await fsSetMain('gmao_history', []);
+    _histCache = [];
+
+    await addLog({ user:currentUser.name, role:'Master Admin', action:'RESET TOTAL des données', result:'Admin' });
+    showToast('🗑 Reset total effectué — comptes de base conservés');
+    closeModal('modalBackup');
+    if (typeof renderAdminUsers === 'function') renderAdminUsers();
+    if (typeof renderEngins === 'function') renderEngins('');
+    if (typeof renderStock === 'function') renderStock();
+    if (typeof renderInterventions === 'function') renderInterventions();
+  } catch (err) {
+    showToast('✗ Erreur reset : '+err.message);
+  }
+}
+
 // ═══ PATCH showPage & applyAccessControl pour le workflow ═══
 const _origShowPage = showPage;
 window.showPage = function(id) {
@@ -4039,6 +4524,17 @@ window.saveNewUser               = saveNewUser;
 window.onNuRoleChange            = onNuRoleChange;
 window.nuGenerateCode            = nuGenerateCode;
 window.deleteUser                = deleteUser;
+window.openEnginDetail           = openEnginDetail;
+window.editFromDetail            = editFromDetail;
+window.deleteFromDetail          = deleteFromDetail;
+window.deleteEngin               = deleteEngin;
+window.deleteIntervention        = deleteIntervention;
+window.deleteStockItem           = deleteStockItem;
+window.openNewOT                 = openNewOT;
+window.openBackupModal           = openBackupModal;
+window.exportBackup              = exportBackup;
+window.restoreBackup             = restoreBackup;
+window.resetAllData              = resetAllData;
 window.openAssignerTache    = openAssignerTache;
 window.submitAssignerTache  = submitAssignerTache;
 window.renderTaches         = renderTaches;
